@@ -1,0 +1,15 @@
+{
+  "name": "tetrova-optical-pos",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/web"],
+  "scripts": {
+    "dev": "npm run dev -w @tetrova/web",
+    "build": "npm run build -w @tetrova/web",
+    "typecheck": "npm run typecheck -w @tetrova/web",
+    "test": "npm run test -w @tetrova/web",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "engines": { "node": ">=22" }
+}
+

@@ -1,0 +1,15 @@
+import { Printer } from "lucide-react";
+import type { Examination } from "../../lib/api";
+
+const display = (value: string | number | null | undefined) => value ?? "—";
+export function PrescriptionPrint({ examination }: { examination: Examination }) {
+  const draft = examination.status === "draft";
+  return <div><div className="print-actions"><button className="button button--primary" onClick={() => window.print()}><Printer size={17} /> Print / Save PDF</button></div><article className="prescription-print">
+    <header><div><div className="print-brand">T</div><div><h1>Weerasekara Optics</h1><p>Professional optical prescription</p></div></div><span className={`print-status ${draft ? "draft" : ""}`}>{draft ? "DRAFT — NOT FINAL" : "FINALIZED"}</span></header>
+    <section className="print-meta"><div><span>Customer</span><strong>{examination.customer_name}</strong></div><div><span>Prescription ID</span><strong>{examination.examination_number}</strong></div><div><span>Examination date</span><strong>{new Date(examination.examined_at).toLocaleDateString("en-LK", { dateStyle: "long" })}</strong></div><div><span>Type</span><strong>{examination.prescription_type ?? "Not specified"}</strong></div></section>
+    <table><thead><tr><th>Eye</th><th>SPH</th><th>CYL</th><th>Axis</th><th>ADD</th><th>Distance VA</th><th>Near VA</th><th>Prism / Base</th></tr></thead><tbody><tr><th>OD · Right</th><td>{display(examination.od_sphere)}</td><td>{display(examination.od_cylinder)}</td><td>{display(examination.od_axis)}</td><td>{display(examination.od_add)}</td><td>{display(examination.od_distance_va)}</td><td>{display(examination.od_near_va)}</td><td>{display(examination.od_prism)} / {display(examination.od_prism_base)}</td></tr><tr><th>OS · Left</th><td>{display(examination.os_sphere)}</td><td>{display(examination.os_cylinder)}</td><td>{display(examination.os_axis)}</td><td>{display(examination.os_add)}</td><td>{display(examination.os_distance_va)}</td><td>{display(examination.os_near_va)}</td><td>{display(examination.os_prism)} / {display(examination.os_prism_base)}</td></tr></tbody></table>
+    <section className="print-pd"><div><span>Binocular PD</span><strong>{display(examination.pd_binocular)} mm</strong></div><div><span>Right PD</span><strong>{display(examination.pd_right)} mm</strong></div><div><span>Left PD</span><strong>{display(examination.pd_left)} mm</strong></div><div><span>Expires</span><strong>{examination.expires_on ?? "Not specified"}</strong></div></section>
+    {(examination.od_notes || examination.os_notes || examination.notes) && <section className="print-notes"><h2>Notes</h2>{examination.od_notes && <p><b>OD:</b> {examination.od_notes}</p>}{examination.os_notes && <p><b>OS:</b> {examination.os_notes}</p>}{examination.notes && <p>{examination.notes}</p>}</section>}
+    <footer><div><span>Examined by</span><strong>{examination.examiner_name}</strong></div><div><span>Finalized</span><strong>{examination.finalized_at ? new Date(examination.finalized_at).toLocaleString("en-LK") : "Draft record"}</strong></div></footer>
+  </article></div>;
+}
