@@ -36,3 +36,14 @@ Inventory is location-scoped from its first release. Every tenant receives a def
 `MAIN` location; later phases can add branches and transfer workflows without changing
 the ledger shape.
 
+## Financial foundation
+
+All financial values are integer minor currency units. Draft invoices and quotations may
+be edited; finalized invoice totals and line snapshots are protected from mutation and
+financial corrections will be represented by payments, returns, and credit notes.
+
+Invoice discounts are allocated across line net amounts using a deterministic
+largest-remainder algorithm. Taxes are then rounded half-up per line using integer ratios.
+Invoice numbering uses a tenant/year sequence row locked with `SELECT FOR UPDATE` on
+PostgreSQL, while financial idempotency keys are unique per tenant and operation.
+

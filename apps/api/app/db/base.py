@@ -1,6 +1,19 @@
 from app.models.audit import AuditLog
 from app.models.customer import Customer
 from app.models.examination import Examination
+from app.models.finance import (
+    CreditNote,
+    CreditNoteLine,
+    FinancialIdempotency,
+    Invoice,
+    InvoiceLine,
+    InvoiceNumberSequence,
+    Payment,
+    Quotation,
+    QuotationLine,
+    Return,
+    ReturnLine,
+)
 from app.models.inventory import InventoryBalance, InventoryLocation, StockMovement
 from app.models.product import Product
 from app.models.supplier import Supplier
@@ -20,4 +33,15 @@ __all__ = [
     "Tenant",
     "User",
     "Visit",
+    "Invoice",
+    "InvoiceLine",
+    "InvoiceNumberSequence",
+    "Payment",
+    "Quotation",
+    "QuotationLine",
+    "Return",
+    "ReturnLine",
+    "CreditNote",
+    "CreditNoteLine",
+    "FinancialIdempotency",
 ]
