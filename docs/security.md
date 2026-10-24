@@ -33,3 +33,14 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
 - Archived products reject movements until an authorized owner or manager reactivates them.
 - Stock writes use optimistic concurrency and reject stale balance versions and negative stock.
 
+## Checkout permissions and isolation
+
+- Owners, managers, and cashiers may confirm checkout; optometrists may only view invoices.
+- Product, location, customer, prescription, invoice, idempotency, and stock queries are scoped to
+  the authenticated tenant rather than accepting tenant identity from the client.
+- Confirmation rejects stale client prices, archived products, insufficient stock, draft or
+  mismatched prescriptions, and reused idempotency keys with a different payload.
+- Invoice snapshots and stock deductions commit atomically. PostgreSQL row locks and unique
+  constraints protect concurrent finalization; SQLite remains a local compatibility target, not
+  the claimed concurrency authority.
+

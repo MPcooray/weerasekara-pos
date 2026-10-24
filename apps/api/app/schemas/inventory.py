@@ -64,6 +64,7 @@ class ProductBase(BaseModel):
     selling_price_minor: int = Field(ge=0, le=2_000_000_000)
     tax_rate: int = Field(default=0, ge=0, le=10000, description="Basis points")
     tax_inclusive: bool = True
+    tax_exempt: bool = False
     track_stock: bool = True
     reorder_threshold: int = Field(default=0, ge=0)
     frame_material: str | None = None
@@ -116,6 +117,7 @@ class ProductUpdate(BaseModel):
     selling_price_minor: int | None = Field(default=None, ge=0)
     tax_rate: int | None = Field(default=None, ge=0, le=10000)
     tax_inclusive: bool | None = None
+    tax_exempt: bool | None = None
     track_stock: bool | None = None
     reorder_threshold: int | None = Field(default=None, ge=0)
     is_archived: bool | None = None

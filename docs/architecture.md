@@ -47,3 +47,13 @@ largest-remainder algorithm. Taxes are then rounded half-up per line using integ
 Invoice numbering uses a tenant/year sequence row locked with `SELECT FOR UPDATE` on
 PostgreSQL, while financial idempotency keys are unique per tenant and operation.
 
+## Checkout consistency
+
+Checkout previews are advisory; confirmation always reloads products, validates tenant-owned
+customer/location/finalized-prescription references, and recalculates totals on the server.
+Confirmation claims a tenant-scoped idempotency key, locks stock-bearing products and inventory
+balances in UUID order, allocates the invoice number, stores immutable invoice snapshots, deducts
+stock, appends invoice-linked stock movements, and records an audit event in one transaction.
+Services and made-to-order products deliberately bypass stock deduction. A finalized sale begins
+with zero paid and the full total outstanding; payment capture remains a later workflow.
+

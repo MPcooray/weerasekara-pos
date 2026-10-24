@@ -20,14 +20,20 @@ export type Examination = ExaminationInput & {
 export type ComparisonChange = { field: string; earlier: string | number | null; later: string | number | null; difference: string | number | null };
 export type ExaminationComparison = { earlier: Examination; later: Examination; changes: ComparisonChange[]; notice: string };
 export type ProductCategory = "spectacle_frame" | "sunglasses" | "prescription_lens" | "contact_lens" | "accessory" | "optical_service";
-export type Product = { id:string; name:string; sku:string; barcode:string|null; category:ProductCategory; brand:string|null; model:string|null; description:string|null; supplier_id:string|null; cost_price_minor:number; selling_price_minor:number; tax_rate:number; tax_inclusive:boolean; track_stock:boolean; reorder_threshold:number; is_archived:boolean; quantity:number; version:number; stock_version:number; created_at:string; updated_at:string };
-export type ProductInput = Omit<Product,"id"|"is_archived"|"quantity"|"version"|"stock_version"|"created_at"|"updated_at">;
+export type Product = { id:string; name:string; sku:string; barcode:string|null; category:ProductCategory; brand:string|null; model:string|null; description:string|null; supplier_id:string|null; cost_price_minor:number; selling_price_minor:number; tax_rate:number; tax_inclusive:boolean; tax_exempt:boolean; track_stock:boolean; made_to_order:boolean; reorder_threshold:number; is_archived:boolean; quantity:number; version:number; stock_version:number; created_at:string; updated_at:string };
+export type ProductInput = Omit<Product,"id"|"is_archived"|"quantity"|"version"|"stock_version"|"created_at"|"updated_at"|"tax_exempt"|"made_to_order"> & {tax_exempt?:boolean;made_to_order?:boolean};
 export type ProductPage = { items:Product[]; page:number; page_size:number; total:number; pages:number };
 export type Supplier = { id:string; business_name:string; contact_person:string|null; telephone:string|null; email:string|null; address:string|null; notes:string|null; is_archived:boolean; created_at:string; updated_at:string };
 export type SupplierInput = Omit<Supplier,"id"|"is_archived"|"created_at"|"updated_at">;
 export type MovementType = "opening_stock"|"stock_received"|"manual_adjustment"|"damaged_stock"|"supplier_return"|"customer_return"|"sale_deduction"|"sale_reversal";
 export type StockMovement = { id:string; product_id:string; location_id:string; quantity_delta:number; movement_type:MovementType; reason:string|null; reference:string|null; actor_id:string; balance_after:number; created_at:string };
 export type InventorySummary = { active_products:number; tracked_products:number; total_units:number; low_stock_products:number; out_of_stock_products:number; valuation_minor:number; by_category:Record<string,number> };
+export type CheckoutLineInput={product_id:string;quantity:number;line_discount_minor:number;expected_unit_price_minor:number};
+export type CheckoutInput={customer_id?:string|null;examination_id?:string|null;invoice_discount_minor:number;lines:CheckoutLineInput[];notes?:string|null};
+export type CheckoutLine={product_id:string;product_name:string;sku:string|null;quantity:number;unit_price_minor:number;line_discount_minor:number;invoice_discount_minor:number;tax_rate_bps:number;tax_exempt:boolean;tax_inclusive:boolean;tax_minor:number;line_total_minor:number;stock_available:number|null};
+export type CheckoutPreview={lines:CheckoutLine[];subtotal_minor:number;discount_minor:number;tax_minor:number;total_minor:number;paid_minor:number;outstanding_minor:number};
+export type InvoiceSummary={id:string;invoice_number:string;customer_id:string|null;invoice_at:string;status:string;total_minor:number;paid_minor:number;outstanding_minor:number};
+export type InvoiceDetail=InvoiceSummary&{location_id:string;examination_id:string|null;actor_id:string;subtotal_minor:number;discount_minor:number;tax_minor:number;notes:string|null;lines:CheckoutLine[]};
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 const TOKEN_KEY = "tetrova_access_token";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -75,3 +81,7 @@ export const updateSupplier=(id:string,data:Partial<SupplierInput>&{is_archived?
 export const getInventorySummary=()=>request<InventorySummary>("/inventory/summary");
 export const getMovements=(id:string)=>request<StockMovement[]>(`/products/${id}/movements`);
 export const createMovement=(id:string,data:{quantity_delta:number;movement_type:MovementType;reason?:string;reference?:string;expected_version:number})=>request<StockMovement>(`/products/${id}/movements`,{method:"POST",body:JSON.stringify(data)});
+export const previewCheckout=(data:CheckoutInput)=>request<CheckoutPreview>("/checkout/preview",{method:"POST",body:JSON.stringify(data)});
+export const confirmCheckout=(data:CheckoutInput,key:string)=>request<InvoiceDetail>("/checkout/confirm",{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});
+export const getInvoices=()=>request<InvoiceSummary[]>("/invoices");
+export const getInvoice=(id:string)=>request<InvoiceDetail>(`/invoices/${id}`);

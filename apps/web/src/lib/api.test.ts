@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, createCustomer, login } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, getInvoices, login, previewCheckout } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -40,5 +40,48 @@ describe("authenticated customer API", () => {
     const result = await compareExaminations("exam-one", "exam-two");
     expect(fetchMock.mock.calls[0][0]).toContain("/examinations/compare/exam-one/exam-two");
     expect(result.notice).toContain("Numerical");
+  });
+
+  it("previews and confirms checkout with an idempotency key", async () => {
+    storage.set("tetrova_access_token", "token");
+    const checkout = {
+      invoice_discount_minor: 0,
+      lines: [{
+        product_id: "product-1",
+        quantity: 1,
+        line_discount_minor: 0,
+        expected_unit_price_minor: 125000,
+      }],
+    };
+    const response = {
+      lines: [], subtotal_minor: 125000, discount_minor: 0, tax_minor: 0,
+      total_minor: 125000, paid_minor: 0, outstanding_minor: 125000,
+    };
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(response), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        ...response, id: "invoice-1", invoice_number: "INV-2026-000001",
+        customer_id: null, invoice_at: "2026-10-24T10:00:00Z", status: "finalized",
+        location_id: "location-1", examination_id: null, actor_id: "user-1", notes: null,
+      }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await previewCheckout(checkout);
+    await confirmCheckout(checkout, "stable-checkout-key");
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/checkout/preview");
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get("Idempotency-Key"))
+      .toBe("stable-checkout-key");
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(checkout);
+  });
+
+  it("loads tenant-scoped invoice history through the authenticated API", async () => {
+    storage.set("tetrova_access_token", "token");
+    const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await getInvoices()).toEqual([]);
+    expect(fetchMock.mock.calls[0][0]).toContain("/invoices");
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Authorization"))
+      .toBe("Bearer token");
   });
 });

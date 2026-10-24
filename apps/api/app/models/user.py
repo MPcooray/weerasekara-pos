@@ -27,6 +27,8 @@ EXAMINATION_WRITE_ROLES = {UserRole.OWNER, UserRole.OPTOMETRIST}
 CATALOG_READ_ROLES = set(UserRole)
 INVENTORY_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
 SUPPLIER_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
+CHECKOUT_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
+INVOICE_READ_ROLES = set(UserRole)
 
 
 class User(IdMixin, TimestampMixin, Base):

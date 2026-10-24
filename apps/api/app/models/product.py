@@ -12,6 +12,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    false,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,6 +49,7 @@ class Product(IdMixin, TimestampMixin, Base):
     selling_price_minor: Mapped[int] = mapped_column(Integer)
     tax_rate: Mapped[int] = mapped_column(Integer, default=0)
     tax_inclusive: Mapped[bool] = mapped_column(Boolean, default=True)
+    tax_exempt: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     track_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     reorder_threshold: Mapped[int] = mapped_column(Integer, default=0)
     is_archived: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
