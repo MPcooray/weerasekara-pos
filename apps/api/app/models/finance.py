@@ -43,6 +43,10 @@ class PaymentMethod(str, enum.Enum):
     BANK_TRANSFER = "bank_transfer"
 
 
+class RefundStatus(str, enum.Enum):
+    RECORDED = "recorded"
+
+
 class ReturnStatus(str, enum.Enum):
     DRAFT = "draft"
     FINALIZED = "finalized"
@@ -68,6 +72,14 @@ class InvoiceNumberSequence(Base):
     next_number: Mapped[int] = mapped_column(Integer, default=1)
 
 
+class FinancialDocumentSequence(Base):
+    __tablename__ = "financial_document_sequences"
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), primary_key=True)
+    document_type: Mapped[str] = mapped_column(String(30), primary_key=True)
+    year: Mapped[int] = mapped_column(Integer, primary_key=True)
+    next_number: Mapped[int] = mapped_column(Integer, default=1)
+
+
 class Invoice(IdMixin, TimestampMixin, Base):
     __tablename__ = "invoices"
     __table_args__ = (
@@ -81,7 +93,13 @@ class Invoice(IdMixin, TimestampMixin, Base):
             name="ck_invoice_balances_nonnegative",
         ),
         CheckConstraint(
-            "paid_minor + outstanding_minor = total_minor", name="ck_invoice_balance_equation"
+            "paid_minor - refunded_minor + outstanding_minor + credited_minor = "
+            "total_minor + refundable_minor",
+            name="ck_invoice_credit_balance_equation",
+        ),
+        CheckConstraint(
+            "credited_minor >= 0 AND refunded_minor >= 0 AND refundable_minor >= 0",
+            name="ck_invoice_adjustments_nonnegative",
         ),
     )
     tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True)
@@ -100,6 +118,9 @@ class Invoice(IdMixin, TimestampMixin, Base):
     total_minor: Mapped[int] = mapped_column(Integer)
     paid_minor: Mapped[int] = mapped_column(Integer, default=0)
     outstanding_minor: Mapped[int] = mapped_column(Integer)
+    credited_minor: Mapped[int] = mapped_column(Integer, default=0)
+    refunded_minor: Mapped[int] = mapped_column(Integer, default=0)
+    refundable_minor: Mapped[int] = mapped_column(Integer, default=0)
     notes: Mapped[str | None] = mapped_column(Text)
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     lines: Mapped[list["InvoiceLine"]] = relationship(
@@ -107,6 +128,9 @@ class Invoice(IdMixin, TimestampMixin, Base):
     )
     payments: Mapped[list["Payment"]] = relationship(
         back_populates="invoice", order_by="Payment.paid_at"
+    )
+    refunds: Mapped[list["Refund"]] = relationship(
+        back_populates="invoice", order_by="Refund.refunded_at"
     )
 
 
@@ -171,6 +195,8 @@ class Quotation(IdMixin, TimestampMixin, Base):
     tax_minor: Mapped[int] = mapped_column(Integer)
     total_minor: Mapped[int] = mapped_column(Integer)
     converted_invoice_id: Mapped[UUID | None] = mapped_column(ForeignKey("invoices.id"))
+    issued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    notes: Mapped[str | None] = mapped_column(Text)
     lines: Mapped[list["QuotationLine"]] = relationship(
         back_populates="quotation", cascade="all, delete-orphan"
     )
@@ -228,6 +254,7 @@ class CreditNote(IdMixin, TimestampMixin, Base):
     __tablename__ = "credit_notes"
     __table_args__ = (
         UniqueConstraint("tenant_id", "credit_note_number", name="uq_credit_notes_tenant_number"),
+        UniqueConstraint("return_id", name="uq_credit_notes_return"),
     )
     tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True)
     invoice_id: Mapped[UUID] = mapped_column(ForeignKey("invoices.id"))
@@ -249,8 +276,44 @@ class CreditNoteLine(IdMixin, Base):
     credit_note_id: Mapped[UUID] = mapped_column(ForeignKey("credit_notes.id"))
     invoice_line_id: Mapped[UUID | None] = mapped_column(ForeignKey("invoice_lines.id"))
     description: Mapped[str] = mapped_column(String(180))
+    quantity: Mapped[int] = mapped_column(Integer, default=1)
+    subtotal_minor: Mapped[int] = mapped_column(Integer, default=0)
+    discount_minor: Mapped[int] = mapped_column(Integer, default=0)
+    tax_minor: Mapped[int] = mapped_column(Integer, default=0)
     amount_minor: Mapped[int] = mapped_column(Integer)
     credit_note: Mapped[CreditNote] = relationship(back_populates="lines")
+
+
+class Refund(IdMixin, Base):
+    __tablename__ = "refunds"
+    __table_args__ = (CheckConstraint("amount_minor > 0", name="ck_refund_positive"),)
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True)
+    invoice_id: Mapped[UUID] = mapped_column(ForeignKey("invoices.id"), index=True)
+    credit_note_id: Mapped[UUID] = mapped_column(ForeignKey("credit_notes.id"), index=True)
+    amount_minor: Mapped[int] = mapped_column(Integer)
+    method: Mapped[PaymentMethod] = mapped_column(Enum(PaymentMethod))
+    reason: Mapped[str] = mapped_column(String(500))
+    reference: Mapped[str | None] = mapped_column(String(120))
+    actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    status: Mapped[RefundStatus] = mapped_column(Enum(RefundStatus), default=RefundStatus.RECORDED)
+    refunded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    invoice: Mapped[Invoice] = relationship(back_populates="refunds")
+
+
+class RefundAllocation(IdMixin, Base):
+    __tablename__ = "refund_allocations"
+    __table_args__ = (
+        UniqueConstraint("refund_id", "credit_note_id", name="uq_refund_credit_allocation"),
+    )
+    tenant_id: Mapped[UUID] = mapped_column(ForeignKey("tenants.id"), index=True)
+    refund_id: Mapped[UUID] = mapped_column(ForeignKey("refunds.id"), index=True)
+    credit_note_id: Mapped[UUID] = mapped_column(ForeignKey("credit_notes.id"), index=True)
+    amount_minor: Mapped[int] = mapped_column(Integer)
 
 
 class FinancialIdempotency(IdMixin, Base):
@@ -303,17 +366,32 @@ def protect_finalized_financial_snapshots(session: Session, *_args: object) -> N
                 raise ValueError("Finalized invoice snapshots are immutable")
         elif isinstance(obj, InvoiceLine) and obj.invoice.status != InvoiceStatus.DRAFT:
             raise ValueError("Finalized invoice line snapshots are immutable")
-        elif isinstance(obj, Payment):
+        elif isinstance(obj, (Payment, Refund, RefundAllocation)):
             changed = {attr.key for attr in inspect(obj).attrs if attr.history.has_changes()}
-            if changed - {"reversed_by_id"}:
+            allowed = {"reversed_by_id"} if isinstance(obj, Payment) else set()
+            if changed - allowed:
                 raise ValueError("Recorded payments are immutable")
         elif isinstance(obj, Quotation):
-            old = inspect(obj).attrs.status.history.deleted
-            if (not old and obj.status != QuotationStatus.DRAFT) or (
-                old and old[0] != QuotationStatus.DRAFT
+            state = inspect(obj)
+            old = state.attrs.status.history.deleted
+            changed = {attr.key for attr in state.attrs if attr.history.has_changes()}
+            if (
+                old
+                and old[0] != QuotationStatus.DRAFT
+                and changed
+                - {
+                    "status",
+                    "converted_invoice_id",
+                    "updated_at",
+                    "version",
+                }
             ):
                 raise ValueError("Issued quotation snapshots are immutable")
-        elif isinstance(obj, QuotationLine) and obj.quotation.status != QuotationStatus.DRAFT:
+        elif (
+            isinstance(obj, QuotationLine)
+            and obj.quotation is not None
+            and obj.quotation.status != QuotationStatus.DRAFT
+        ):
             raise ValueError("Issued quotation line snapshots are immutable")
         elif isinstance(obj, Return):
             old = inspect(obj).attrs.status.history.deleted
@@ -336,7 +414,7 @@ def protect_finalized_financial_snapshots(session: Session, *_args: object) -> N
             raise ValueError("Finalized invoices cannot be deleted")
         if isinstance(obj, InvoiceLine) and obj.invoice.status != InvoiceStatus.DRAFT:
             raise ValueError("Finalized invoice line snapshots cannot be deleted")
-        if isinstance(obj, (Payment, Quotation, Return, CreditNote)):
+        if isinstance(obj, (Payment, Refund, RefundAllocation, Quotation, Return, CreditNote)):
             status = getattr(obj, "status", None)
             if status is None or status.value not in {"draft"}:
                 raise ValueError("Finalized financial records cannot be deleted")

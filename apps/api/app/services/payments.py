@@ -95,9 +95,14 @@ def record_payment(
     if invoice.status not in {InvoiceStatus.FINALIZED, InvoiceStatus.PARTIALLY_PAID}:
         raise HTTPException(status_code=409, detail="Payments require an unpaid finalized invoice")
 
+    if data.amount_minor > invoice.outstanding_minor:
+        raise HTTPException(status_code=409, detail="Payment cannot exceed the outstanding balance")
     new_paid = invoice.paid_minor + data.amount_minor
     try:
-        outstanding = calculate_balance(invoice.total_minor, new_paid)
+        outstanding = calculate_balance(
+            invoice.total_minor - invoice.credited_minor,
+            new_paid - invoice.refunded_minor,
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
 

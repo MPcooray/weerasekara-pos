@@ -65,3 +65,12 @@ locks the invoice row on PostgreSQL before recalculating the integer-minor-unit 
 payment row, invoice paid/outstanding amounts, derived payment status, and audit metadata commit
 in one transaction. Full, partial, mixed-method, and advance-deposit payments all use this path.
 
+## Financial adjustments
+
+Issued quotations, finalized returns, credit notes, refunds, and stock-return movements are
+immutable historical records. Quotation conversion reuses checkout validation, calculation,
+locking, invoice numbering, and stock deduction; changed current values require explicit approval.
+Credits reduce outstanding debt first. Any excess becomes refundable, and refunds reduce that
+liability without creating negative payments. The invoice invariant explicitly reconciles gross
+payments, refunds, outstanding debt, issued credit, and remaining refundable liability.
+

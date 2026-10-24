@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, getInvoices, login, previewCheckout, recordPayment } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, createQuotation, getInvoices, login, previewCheckout, recordPayment, recordRefund } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -95,5 +95,17 @@ describe("authenticated customer API", () => {
     const options = fetchMock.mock.calls[0][1];
     expect(new Headers(options.headers).get("Idempotency-Key")).toBe("payment-key-1");
     expect(JSON.parse(options.body)).toEqual({ amount_minor: 100000, method: "card", reference: "TERM-1" });
+  });
+
+  it("creates quotation drafts and submits refunds with idempotency", async () => {
+    storage.set("tetrova_access_token", "token");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "quote-1" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "refund-1" }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await createQuotation({ invoice_discount_minor: 0, lines: [{ product_id: "p1", quantity: 1, line_discount_minor: 0 }] });
+    await recordRefund("credit-1", { amount_minor: 5000, method: "cash", reason: "Approved return" }, "refund-key-1");
+    expect(fetchMock.mock.calls[0][0]).toContain("/quotations");
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get("Idempotency-Key")).toBe("refund-key-1");
   });
 });

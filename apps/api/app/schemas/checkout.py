@@ -23,6 +23,7 @@ class CheckoutRequest(BaseModel):
 
 
 class CheckoutLineResult(BaseModel):
+    id: UUID | None = None
     product_id: UUID
     product_name: str
     sku: str | None
@@ -57,6 +58,9 @@ class InvoiceSummary(BaseModel):
     total_minor: int
     paid_minor: int
     outstanding_minor: int
+    credited_minor: int = 0
+    refunded_minor: int = 0
+    refundable_minor: int = 0
 
 
 class InvoicePage(BaseModel):

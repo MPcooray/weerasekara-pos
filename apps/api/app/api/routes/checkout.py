@@ -35,6 +35,9 @@ def invoice_detail(invoice: Invoice) -> InvoiceDetail:
         total_minor=invoice.total_minor,
         paid_minor=invoice.paid_minor,
         outstanding_minor=invoice.outstanding_minor,
+        credited_minor=invoice.credited_minor,
+        refunded_minor=invoice.refunded_minor,
+        refundable_minor=invoice.refundable_minor,
         location_id=invoice.location_id,
         examination_id=invoice.examination_id,
         actor_id=invoice.actor_id,
@@ -44,6 +47,7 @@ def invoice_detail(invoice: Invoice) -> InvoiceDetail:
         notes=invoice.notes,
         lines=[
             CheckoutLineResult(
+                id=line.id,
                 product_id=line.product_id,
                 product_name=line.product_name,
                 sku=line.sku,

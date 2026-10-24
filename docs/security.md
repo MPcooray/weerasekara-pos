@@ -54,3 +54,12 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
 - Only method labels and optional external references are stored. Card numbers, CVVs, online
   banking credentials, and payment-terminal secrets are outside the data model.
 
+## Returns and refunds
+
+- Cashiers can request returns but only owners and managers can approve returns, issue the linked
+  credit through approval, or record an externally completed refund.
+- Invoice, return, credit-note, inventory-balance, and refund mutations are tenant-scoped and use
+  persistent idempotency keys.
+- PostgreSQL locks serialize quotation conversion, sold-quantity eligibility, restocking, credit
+  allocation, and refund limits. No card or bank credentials are stored.
+

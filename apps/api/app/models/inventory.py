@@ -53,6 +53,7 @@ class StockMovement(IdMixin, Base):
     reason: Mapped[str | None] = mapped_column(String(500))
     reference: Mapped[str | None] = mapped_column(String(120), index=True)
     invoice_id: Mapped[UUID | None] = mapped_column(ForeignKey("invoices.id"), index=True)
+    return_id: Mapped[UUID | None] = mapped_column(ForeignKey("returns.id"), index=True)
     actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), index=True)
     balance_after: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
