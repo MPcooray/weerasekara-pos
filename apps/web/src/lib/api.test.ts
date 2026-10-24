@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, getInvoices, login, previewCheckout } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, getInvoices, login, previewCheckout, recordPayment } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -77,11 +77,23 @@ describe("authenticated customer API", () => {
 
   it("loads tenant-scoped invoice history through the authenticated API", async () => {
     storage.set("tetrova_access_token", "token");
-    const fetchMock = vi.fn().mockResolvedValue(new Response("[]", { status: 200 }));
+    const page = { items: [], page: 1, page_size: 20, total: 0, pages: 1, total_outstanding_minor: 0 };
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify(page), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
-    expect(await getInvoices()).toEqual([]);
+    expect(await getInvoices({ paymentStatus: "outstanding" })).toEqual(page);
     expect(fetchMock.mock.calls[0][0]).toContain("/invoices");
+    expect(fetchMock.mock.calls[0][0]).toContain("payment_status=outstanding");
     expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Authorization"))
       .toBe("Bearer token");
+  });
+
+  it("records payments with an idempotency key and no payment credentials", async () => {
+    storage.set("tetrova_access_token", "token");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ payment: {}, invoice: {} }), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await recordPayment("invoice-1", { amount_minor: 100000, method: "card", reference: "TERM-1" }, "payment-key-1");
+    const options = fetchMock.mock.calls[0][1];
+    expect(new Headers(options.headers).get("Idempotency-Key")).toBe("payment-key-1");
+    expect(JSON.parse(options.body)).toEqual({ amount_minor: 100000, method: "card", reference: "TERM-1" });
   });
 });

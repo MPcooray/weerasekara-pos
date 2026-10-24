@@ -44,3 +44,13 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
   constraints protect concurrent finalization; SQLite remains a local compatibility target, not
   the claimed concurrency authority.
 
+## Payment recording
+
+- Owners, managers, and cashiers can record payments; optometrists retain read-only access.
+- Every payment lookup and write includes the authenticated tenant boundary.
+- Amounts must be positive and cannot exceed the row-locked invoice's current balance.
+- Idempotency keys are persisted per tenant and reject payload reuse while safely replaying an
+  already completed request.
+- Only method labels and optional external references are stored. Card numbers, CVVs, online
+  banking credentials, and payment-terminal secrets are outside the data model.
+

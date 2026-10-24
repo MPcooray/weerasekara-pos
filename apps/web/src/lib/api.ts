@@ -33,7 +33,11 @@ export type CheckoutInput={customer_id?:string|null;examination_id?:string|null;
 export type CheckoutLine={product_id:string;product_name:string;sku:string|null;quantity:number;unit_price_minor:number;line_discount_minor:number;invoice_discount_minor:number;tax_rate_bps:number;tax_exempt:boolean;tax_inclusive:boolean;tax_minor:number;line_total_minor:number;stock_available:number|null};
 export type CheckoutPreview={lines:CheckoutLine[];subtotal_minor:number;discount_minor:number;tax_minor:number;total_minor:number;paid_minor:number;outstanding_minor:number};
 export type InvoiceSummary={id:string;invoice_number:string;customer_id:string|null;invoice_at:string;status:string;total_minor:number;paid_minor:number;outstanding_minor:number};
-export type InvoiceDetail=InvoiceSummary&{location_id:string;examination_id:string|null;actor_id:string;subtotal_minor:number;discount_minor:number;tax_minor:number;notes:string|null;lines:CheckoutLine[]};
+export type PaymentMethod="cash"|"card"|"bank_transfer";
+export type Payment={id:string;invoice_id:string;amount_minor:number;method:PaymentMethod;reference:string|null;paid_at:string;actor_id:string;created_at:string};
+export type InvoiceDetail=InvoiceSummary&{location_id:string;examination_id:string|null;actor_id:string;subtotal_minor:number;discount_minor:number;tax_minor:number;notes:string|null;lines:CheckoutLine[];payments:Payment[]};
+export type InvoicePage={items:InvoiceSummary[];page:number;page_size:number;total:number;pages:number;total_outstanding_minor:number};
+export type PaymentResult={payment:Payment;invoice:InvoiceSummary};
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 const TOKEN_KEY = "tetrova_access_token";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -83,5 +87,6 @@ export const getMovements=(id:string)=>request<StockMovement[]>(`/products/${id}
 export const createMovement=(id:string,data:{quantity_delta:number;movement_type:MovementType;reason?:string;reference?:string;expected_version:number})=>request<StockMovement>(`/products/${id}/movements`,{method:"POST",body:JSON.stringify(data)});
 export const previewCheckout=(data:CheckoutInput)=>request<CheckoutPreview>("/checkout/preview",{method:"POST",body:JSON.stringify(data)});
 export const confirmCheckout=(data:CheckoutInput,key:string)=>request<InvoiceDetail>("/checkout/confirm",{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});
-export const getInvoices=()=>request<InvoiceSummary[]>("/invoices");
+export const getInvoices=(options:{search?:string;customerId?:string;paymentStatus?:string;page?:number}={})=>request<InvoicePage>(`/invoices?${new URLSearchParams({search:options.search??"",payment_status:options.paymentStatus??"all",page:String(options.page??1),page_size:"20",...(options.customerId?{customer_id:options.customerId}:{})})}`);
 export const getInvoice=(id:string)=>request<InvoiceDetail>(`/invoices/${id}`);
+export const recordPayment=(invoiceId:string,data:{amount_minor:number;method:PaymentMethod;reference?:string|null},key:string)=>request<PaymentResult>(`/invoices/${invoiceId}/payments`,{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});

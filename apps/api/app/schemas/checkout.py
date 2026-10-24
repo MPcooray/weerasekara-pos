@@ -1,7 +1,9 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.models.finance import PaymentMethod
 
 
 class CheckoutLineInput(BaseModel):
@@ -57,6 +59,42 @@ class InvoiceSummary(BaseModel):
     outstanding_minor: int
 
 
+class InvoicePage(BaseModel):
+    items: list[InvoiceSummary]
+    page: int
+    page_size: int
+    total: int
+    pages: int
+    total_outstanding_minor: int
+
+
+class PaymentCreate(BaseModel):
+    amount_minor: int = Field(gt=0, le=2_000_000_000)
+    method: PaymentMethod
+    reference: str | None = Field(default=None, max_length=120)
+
+    @field_validator("reference")
+    @classmethod
+    def clean_reference(cls, value: str | None) -> str | None:
+        return value.strip() or None if value is not None else None
+
+
+class PaymentResponse(BaseModel):
+    id: UUID
+    invoice_id: UUID
+    amount_minor: int
+    method: PaymentMethod
+    reference: str | None
+    paid_at: datetime
+    actor_id: UUID
+    created_at: datetime
+
+
+class PaymentResult(BaseModel):
+    payment: PaymentResponse
+    invoice: InvoiceSummary
+
+
 class InvoiceDetail(InvoiceSummary):
     location_id: UUID
     examination_id: UUID | None
@@ -66,3 +104,4 @@ class InvoiceDetail(InvoiceSummary):
     tax_minor: int
     notes: str | None
     lines: list[CheckoutLineResult]
+    payments: list[PaymentResponse] = Field(default_factory=list)

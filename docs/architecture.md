@@ -57,3 +57,11 @@ stock, appends invoice-linked stock movements, and records an audit event in one
 Services and made-to-order products deliberately bypass stock deduction. A finalized sale begins
 with zero paid and the full total outstanding; payment capture remains a later workflow.
 
+## Payment consistency
+
+Payments are immutable records of funds confirmed externally by staff; the application never
+stores card or bank credentials. Payment submission claims a tenant-scoped idempotency key and
+locks the invoice row on PostgreSQL before recalculating the integer-minor-unit balance. The
+payment row, invoice paid/outstanding amounts, derived payment status, and audit metadata commit
+in one transaction. Full, partial, mixed-method, and advance-deposit payments all use this path.
+

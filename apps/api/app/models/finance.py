@@ -105,7 +105,9 @@ class Invoice(IdMixin, TimestampMixin, Base):
     lines: Mapped[list["InvoiceLine"]] = relationship(
         back_populates="invoice", cascade="all, delete-orphan"
     )
-    payments: Mapped[list["Payment"]] = relationship(back_populates="invoice")
+    payments: Mapped[list["Payment"]] = relationship(
+        back_populates="invoice", order_by="Payment.paid_at"
+    )
 
 
 class InvoiceLine(IdMixin, Base):
@@ -144,6 +146,9 @@ class Payment(IdMixin, Base):
     actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     paid_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC), index=True
     )
     reversed_by_id: Mapped[UUID | None] = mapped_column(ForeignKey("payments.id"))
     invoice: Mapped[Invoice] = relationship(back_populates="payments", foreign_keys=[invoice_id])

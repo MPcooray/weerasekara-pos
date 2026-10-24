@@ -108,3 +108,12 @@ def calculate_totals(
         paid_minor,
         total - paid_minor,
     )
+
+
+def calculate_balance(total_minor: int, paid_minor: int) -> int:
+    """Return an invoice balance using the same integer-money invariants as checkout."""
+    if total_minor < 0 or paid_minor < 0:
+        raise ValueError("Invoice total and paid amount cannot be negative")
+    if paid_minor > total_minor:
+        raise ValueError("Payment cannot exceed the outstanding balance")
+    return total_minor - paid_minor
