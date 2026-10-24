@@ -5,6 +5,8 @@ import "./styles.css";
 import "./pos.css";
 import "./payments.css";
 import "./adjustments.css";
+import "./printing.css";
+import "./reporting.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

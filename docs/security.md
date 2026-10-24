@@ -63,3 +63,10 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
 - PostgreSQL locks serialize quotation conversion, sold-quantity eligibility, restocking, credit
   allocation, and refund limits. No card or bank credentials are stored.
 
+## Reporting and print data
+
+- Financial dashboards, report exports, and branding updates are restricted to owners and managers.
+- Printable-document lookups combine authenticated tenant and document identifiers.
+- Logo configuration accepts a URL rather than an upload; production should restrict external
+  image sources with Content Security Policy.
+

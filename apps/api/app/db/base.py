@@ -4,6 +4,7 @@ from app.models.examination import Examination
 from app.models.finance import (
     CreditNote,
     CreditNoteLine,
+    FinancialDocumentSequence,
     FinancialIdempotency,
     Invoice,
     InvoiceLine,
@@ -11,6 +12,8 @@ from app.models.finance import (
     Payment,
     Quotation,
     QuotationLine,
+    Refund,
+    RefundAllocation,
     Return,
     ReturnLine,
 )
@@ -44,4 +47,7 @@ __all__ = [
     "CreditNote",
     "CreditNoteLine",
     "FinancialIdempotency",
+    "FinancialDocumentSequence",
+    "Refund",
+    "RefundAllocation",
 ]

@@ -44,6 +44,13 @@ export type Quotation={id:string;quotation_number:string;customer_id:string|null
 export type QuotationPage={items:Quotation[];page:number;page_size:number;total:number;pages:number};
 export type ReturnRecord={id:string;invoice_id:string;return_number:string;status:string;reason:string;total_minor:number;finalized_at:string|null;created_at:string;credit_note_id:string|null;lines:Array<{id:string;invoice_line_id:string;quantity:number;amount_minor:number;restock:boolean}>};
 export type CreditNote={id:string;invoice_id:string;return_id:string|null;credit_note_number:string;status:string;reason:string;total_minor:number;issued_at:string|null;lines:Array<{description:string;quantity:number;subtotal_minor:number;discount_minor:number;tax_minor:number;amount_minor:number}>};
+export type Refund={id:string;invoice_id:string;credit_note_id:string;amount_minor:number;method:PaymentMethod;reason:string;reference:string|null;actor_id:string;refunded_at:string};
+export type Branding={business_display_name:string;business_address:string|null;business_contact:string|null;logo_url:string|null;invoice_footer:string|null;receipt_footer:string|null;business_registration:string|null;tax_registration:string|null;default_currency:string};
+export type NamedAmount={name:string;amount_minor:number;quantity:number};
+export type TrendPoint={date:string;invoiced_minor:number;payments_minor:number};
+export type FinancialReport={date_from:string;date_to:string;timezone:string;invoiced_sales_minor:number;payments_received_minor:number;refunds_minor:number;outstanding_minor:number;credit_notes_minor:number;discounts_minor:number;tax_minor:number;payment_methods:NamedAmount[];top_products:NamedAmount[];sales_by_staff:NamedAmount[];trend:TrendPoint[]};
+export type Dashboard={today_invoiced_minor:number;today_payments_minor:number;outstanding_minor:number;today_refunds_minor:number;pending_quotations:number;low_stock_products:number;recent_transactions:Array<{kind:string;reference:string;amount_minor:number;occurred_at:string}>;trend:TrendPoint[]};
+export type PrintDocument={document_type:string;document_id:string;document_number:string;occurred_at:string;status:string;customer_name:string|null;related_number:string|null;payment_method:string|null;external_reference:string|null;reason:string|null;subtotal_minor:number;discount_minor:number;tax_minor:number;total_minor:number;paid_minor:number;outstanding_minor:number;lines:Array<{description:string;sku:string|null;quantity:number;unit_price_minor:number;discount_minor:number;tax_minor:number;total_minor:number}>;branding:Branding};
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 const TOKEN_KEY = "tetrova_access_token";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -106,4 +113,10 @@ export const getReturns=(invoiceId:string)=>request<ReturnRecord[]>(`/invoices/$
 export const createReturn=(invoiceId:string,data:{reason:string;lines:Array<{invoice_line_id:string;quantity:number;restock:boolean}>},key:string)=>request<ReturnRecord>(`/invoices/${invoiceId}/returns`,{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});
 export const approveReturn=(id:string,key:string)=>request<ReturnRecord>(`/returns/${id}/approve`,{method:"POST",headers:{"Idempotency-Key":key}});
 export const getCreditNote=(id:string)=>request<CreditNote>(`/credit-notes/${id}`);
-export const recordRefund=(id:string,data:{amount_minor:number;method:PaymentMethod;reason:string;reference?:string|null},key:string)=>request(`/credit-notes/${id}/refunds`,{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});
+export const recordRefund=(id:string,data:{amount_minor:number;method:PaymentMethod;reason:string;reference?:string|null},key:string)=>request<Refund>(`/credit-notes/${id}/refunds`,{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify(data)});
+export const getBranding=()=>request<Branding>("/tenant/branding");
+export const updateBranding=(data:Partial<Branding>)=>request<Branding>("/tenant/branding",{method:"PATCH",body:JSON.stringify(data)});
+export const getFinancialReport=(dateFrom:string,dateTo:string)=>request<FinancialReport>(`/reports/financial?${new URLSearchParams({date_from:dateFrom,date_to:dateTo})}`);
+export const getDashboard=()=>request<Dashboard>("/dashboard");
+export const getPrintDocument=(type:string,id:string)=>request<PrintDocument>(`/print-documents/${type}/${id}`);
+export async function downloadFinancialCsv(dateFrom:string,dateTo:string){const response=await fetch(`${API_URL}/reports/financial.csv?${new URLSearchParams({date_from:dateFrom,date_to:dateTo})}`,{headers:{Authorization:`Bearer ${token()}`}});if(!response.ok)throw new ApiError(response.status,"CSV export failed");const blob=await response.blob();const url=URL.createObjectURL(blob);const anchor=document.createElement("a");anchor.href=url;anchor.download=`financial-${dateFrom}-${dateTo}.csv`;anchor.click();URL.revokeObjectURL(url);}

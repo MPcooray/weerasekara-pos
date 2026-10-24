@@ -74,3 +74,9 @@ Credits reduce outstanding debt first. Any excess becomes refundable, and refund
 liability without creating negative payments. The invoice invariant explicitly reconciles gross
 payments, refunds, outstanding debt, issued credit, and remaining refundable liability.
 
+## Printing and reporting
+
+Reports use finalized snapshots and immutable payment/refund events. Asia/Colombo local dates are
+converted to half-open UTC ranges. Tenant-scoped print APIs serialize the stored historical
+records, and the shared React client renders them for A4 or 80 mm browser printing.
+
