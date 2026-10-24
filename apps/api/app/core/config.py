@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     cors_origin_regex: str | None = None
     initial_tenant_name: str = "Weerasekara Optics"
     initial_tenant_slug: str = "weerasekara-optics"
-    initial_admin_email: str = "owner@weerasekara.local"
+    initial_admin_email: str = "owner@weerasekara.lk"
     initial_admin_password: str = ""
     allow_initial_admin_bootstrap: bool = False
     optical_power_min: Decimal = Decimal("-30.00")

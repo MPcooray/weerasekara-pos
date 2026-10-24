@@ -24,3 +24,15 @@ Phase 0 provides password login, Argon2 hashing, short-lived signed access token
 - Test: isolated SQLite database per test session
 - Production: containerized API and static web assets, managed PostgreSQL, reverse proxy/TLS, secrets supplied by the deployment platform
 
+## Inventory consistency
+
+Phase 3 stores money as integer LKR minor units. Stock changes pass through a single
+transactional inventory service which atomically performs an optimistic version check,
+updates the product/location balance, appends an immutable stock-movement record, and
+writes an audit event. Negative balances are rejected by default. The balance is a fast
+projection that can be reconciled against the sum of the movement ledger.
+
+Inventory is location-scoped from its first release. Every tenant receives a default
+`MAIN` location; later phases can add branches and transfer workflows without changing
+the ledger shape.
+

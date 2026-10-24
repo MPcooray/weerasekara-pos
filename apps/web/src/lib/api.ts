@@ -19,6 +19,15 @@ export type Examination = ExaminationInput & {
 };
 export type ComparisonChange = { field: string; earlier: string | number | null; later: string | number | null; difference: string | number | null };
 export type ExaminationComparison = { earlier: Examination; later: Examination; changes: ComparisonChange[]; notice: string };
+export type ProductCategory = "spectacle_frame" | "sunglasses" | "prescription_lens" | "contact_lens" | "accessory" | "optical_service";
+export type Product = { id:string; name:string; sku:string; barcode:string|null; category:ProductCategory; brand:string|null; model:string|null; description:string|null; supplier_id:string|null; cost_price_minor:number; selling_price_minor:number; tax_rate:number; tax_inclusive:boolean; track_stock:boolean; reorder_threshold:number; is_archived:boolean; quantity:number; version:number; stock_version:number; created_at:string; updated_at:string };
+export type ProductInput = Omit<Product,"id"|"is_archived"|"quantity"|"version"|"stock_version"|"created_at"|"updated_at">;
+export type ProductPage = { items:Product[]; page:number; page_size:number; total:number; pages:number };
+export type Supplier = { id:string; business_name:string; contact_person:string|null; telephone:string|null; email:string|null; address:string|null; notes:string|null; is_archived:boolean; created_at:string; updated_at:string };
+export type SupplierInput = Omit<Supplier,"id"|"is_archived"|"created_at"|"updated_at">;
+export type MovementType = "opening_stock"|"stock_received"|"manual_adjustment"|"damaged_stock"|"supplier_return"|"customer_return"|"sale_deduction"|"sale_reversal";
+export type StockMovement = { id:string; product_id:string; location_id:string; quantity_delta:number; movement_type:MovementType; reason:string|null; reference:string|null; actor_id:string; balance_after:number; created_at:string };
+export type InventorySummary = { active_products:number; tracked_products:number; total_units:number; low_stock_products:number; out_of_stock_products:number; valuation_minor:number; by_category:Record<string,number> };
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
 const TOKEN_KEY = "tetrova_access_token";
 export class ApiError extends Error { constructor(public status: number, message: string) { super(message); } }
@@ -57,3 +66,12 @@ export const updateExamination = (id: string, expectedVersion: number, data: Exa
 export const finalizeExamination = (id: string, expectedVersion: number) => request<Examination>(`/examinations/${id}/finalize`, { method: "POST", body: JSON.stringify({ expected_version: expectedVersion }) });
 export const createExaminationRevision = (id: string) => request<Examination>(`/examinations/${id}/revisions`, { method: "POST" });
 export const compareExaminations = (earlierId: string, laterId: string) => request<ExaminationComparison>(`/examinations/compare/${earlierId}/${laterId}`);
+export function getProducts(search="", page=1){ return request<ProductPage>(`/products?${new URLSearchParams({search,page:String(page),page_size:"20"})}`); }
+export const createProduct=(data:ProductInput)=>request<Product>("/products",{method:"POST",body:JSON.stringify(data)});
+export const updateProduct=(id:string,data:Partial<ProductInput>&{is_archived?:boolean})=>request<Product>(`/products/${id}`,{method:"PATCH",body:JSON.stringify(data)});
+export const getSuppliers=()=>request<Supplier[]>("/suppliers");
+export const createSupplier=(data:SupplierInput)=>request<Supplier>("/suppliers",{method:"POST",body:JSON.stringify(data)});
+export const updateSupplier=(id:string,data:Partial<SupplierInput>&{is_archived?:boolean})=>request<Supplier>(`/suppliers/${id}`,{method:"PATCH",body:JSON.stringify(data)});
+export const getInventorySummary=()=>request<InventorySummary>("/inventory/summary");
+export const getMovements=(id:string)=>request<StockMovement[]>(`/products/${id}/movements`);
+export const createMovement=(id:string,data:{quantity_delta:number;movement_type:MovementType;reason?:string;reference?:string;expected_version:number})=>request<StockMovement>(`/products/${id}/movements`,{method:"POST",body:JSON.stringify(data)});

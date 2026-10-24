@@ -24,3 +24,12 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
 
 `.env`, SQLite databases, virtual environments, and build outputs are excluded from Git and Docker build contexts. The sample development administrator is not copied into container images. Production startup does not bootstrap an administrator unless `ALLOW_INITIAL_ADMIN_BOOTSTRAP=true` is deliberately supplied with non-sample credentials.
 
+## Catalog and inventory permissions
+
+- Owners and managers can create and edit products and suppliers and record stock movements.
+- Optometrists and cashiers have read-only access to the catalog and availability.
+- Every product, supplier, location, balance and movement query is tenant-scoped.
+- Price changes and all inventory mutations create audit records.
+- Archived products reject movements until an authorized owner or manager reactivates them.
+- Stock writes use optimistic concurrency and reject stale balance versions and negative stock.
+
