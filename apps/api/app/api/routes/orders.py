@@ -6,6 +6,7 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from sqlalchemy import func, or_, select
 
 from app.api.dependencies import CurrentUser, DbSession
+from app.core.time import colombo_today
 from app.models.customer import Customer
 from app.models.finance import Invoice
 from app.models.order import OpticalOrder, OpticalOrderStatus
@@ -83,7 +84,7 @@ def response(db: DbSession, item: OpticalOrder) -> OrderResponse:
         expected_collection_date=item.expected_collection_date,
         overdue=bool(
             item.expected_collection_date
-            and item.expected_collection_date < date.today()
+            and item.expected_collection_date < colombo_today()
             and item.status not in {OpticalOrderStatus.COLLECTED, OpticalOrderStatus.CANCELLED}
         ),
         outstanding_minor=outstanding or 0,
@@ -206,7 +207,7 @@ def directory(
     if overdue:
         conditions.extend(
             [
-                OpticalOrder.expected_collection_date < date.today(),
+                OpticalOrder.expected_collection_date < colombo_today(),
                 OpticalOrder.status.notin_(
                     [OpticalOrderStatus.COLLECTED, OpticalOrderStatus.CANCELLED]
                 ),

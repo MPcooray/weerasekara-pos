@@ -1,4 +1,3 @@
-from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -8,6 +7,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentUser, DbSession
 from app.api.routes.checkout import get_invoice, invoice_detail
+from app.core.time import colombo_today
 from app.models.finance import CreditNote, Quotation, Refund, Return
 from app.models.user import (
     QUOTATION_WRITE_ROLES,
@@ -46,7 +46,7 @@ router = APIRouter(tags=["financial-adjustments"])
 
 def quotation_response(item: Quotation) -> QuotationResponse:
     status = item.status.value
-    if status == "issued" and item.expires_on and item.expires_on < date.today():
+    if status == "issued" and item.expires_on and item.expires_on < colombo_today():
         status = "expired"
     return QuotationResponse(
         id=item.id,

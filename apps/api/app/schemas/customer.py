@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from app.core.time import colombo_today
 from app.models.customer import Gender
 from app.models.visit import VisitStatus
 
@@ -62,7 +63,7 @@ class CustomerBase(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def validate_birth_date(cls, value: date | None) -> date | None:
-        if value and value > date.today():
+        if value and value > colombo_today():
             raise ValueError("Date of birth cannot be in the future")
         return value
 
@@ -99,7 +100,7 @@ class CustomerUpdate(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def validate_birth_date(cls, value: date | None) -> date | None:
-        if value and value > date.today():
+        if value and value > colombo_today():
             raise ValueError("Date of birth cannot be in the future")
         return value
 

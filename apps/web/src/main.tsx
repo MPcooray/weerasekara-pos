@@ -8,6 +8,7 @@ import "./adjustments.css";
 import "./printing.css";
 import "./reporting.css";
 import "./orders.css";
+import "./phase6.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

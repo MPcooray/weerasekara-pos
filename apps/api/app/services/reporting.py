@@ -1,10 +1,10 @@
 from collections import defaultdict
 from datetime import UTC, date, datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
-from sqlalchemy import func, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.time import COLOMBO, colombo_today
 from app.models.finance import (
     CreditNote,
     CreditNoteStatus,
@@ -27,7 +27,6 @@ from app.schemas.reporting import (
     TrendPoint,
 )
 
-COLOMBO = ZoneInfo("Asia/Colombo")
 ACTIVE_INVOICES = [InvoiceStatus.FINALIZED, InvoiceStatus.PARTIALLY_PAID, InvoiceStatus.PAID]
 
 
@@ -137,7 +136,7 @@ def financial_report(db: Session, tenant_id, date_from: date, date_to: date) -> 
 
 
 def dashboard(db: Session, tenant_id, today: date | None = None) -> DashboardResponse:
-    today = today or datetime.now(COLOMBO).date()
+    today = today or colombo_today()
     report = financial_report(db, tenant_id, today, today)
     trend_start = today - timedelta(days=6)
     trend = financial_report(db, tenant_id, trend_start, today).trend
@@ -153,7 +152,13 @@ def dashboard(db: Session, tenant_id, today: date | None = None) -> DashboardRes
         .select_from(Quotation)
         .where(
             Quotation.tenant_id == tenant_id,
-            Quotation.status.in_([QuotationStatus.DRAFT, QuotationStatus.ISSUED]),
+            or_(
+                Quotation.status == QuotationStatus.DRAFT,
+                and_(
+                    Quotation.status == QuotationStatus.ISSUED,
+                    or_(Quotation.expires_on.is_(None), Quotation.expires_on >= today),
+                ),
+            ),
         ),
     )
     low_stock = _amount(

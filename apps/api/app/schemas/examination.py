@@ -5,6 +5,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.core.config import get_settings
+from app.core.time import colombo_today
 from app.models.examination import ExaminationStatus, PrescriptionType
 
 POWER_FIELDS = {"od_sphere", "od_cylinder", "os_sphere", "os_cylinder"}
@@ -85,7 +86,7 @@ class ExaminationFields(BaseModel):
 
     @model_validator(mode="after")
     def validate_dates(self) -> "ExaminationFields":
-        if self.expires_on and self.expires_on < date.today():
+        if self.expires_on and self.expires_on < colombo_today():
             raise ValueError("Prescription expiration cannot be in the past")
         return self
 

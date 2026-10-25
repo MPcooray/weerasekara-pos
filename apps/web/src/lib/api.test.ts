@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getInvoices, login, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getCustomers, getInvoices, login, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -119,5 +119,20 @@ describe("authenticated customer API", () => {
     await transitionOrder("order-1", "confirmed", 1, "Approved", "order-transition-key");
     expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Idempotency-Key")).toBe("order-create-key");
     expect(new Headers(fetchMock.mock.calls[1][1].headers).get("Idempotency-Key")).toBe("order-transition-key");
+  });
+
+  it("clears an expired authenticated session on 401", async () => {
+    storage.set("tetrova_access_token", "expired-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ detail: "Session expired" }), { status: 401 }),
+    ));
+    await expect(getCustomers()).rejects.toThrow("Session expired");
+    expect(storage.has("tetrova_access_token")).toBe(false);
+  });
+
+  it("turns a browser network failure into an actionable financial warning", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    await expect(confirmCheckout({ invoice_discount_minor: 0, lines: [] }, "safe-key"))
+      .rejects.toThrow("verify the record before submitting again");
   });
 });

@@ -64,14 +64,28 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const headers = new Headers(options.headers);
   if (options.body) headers.set("Content-Type", "application/json");
   if (token()) headers.set("Authorization", `Bearer ${token()}`);
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
-  if (response.status === 204) return undefined as T;
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const detail = Array.isArray(body.detail) ? body.detail.map((item: { msg?: string }) => item.msg).join(". ") : body.detail;
-    throw new ApiError(response.status, detail || "Something went wrong");
+  const controller = options.signal ? null : new AbortController();
+  const timeout = controller ? globalThis.setTimeout(() => controller.abort(), 15000) : null;
+  try {
+    const response = await fetch(`${API_URL}${path}`, { ...options, headers, signal: options.signal ?? controller?.signal });
+    if (response.status === 204) return undefined as T;
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      if (response.status === 401 && token()) {
+        sessionStorage.removeItem(TOKEN_KEY);
+        if (typeof window !== "undefined") window.dispatchEvent(new Event("tetrova:session-expired"));
+      }
+      const detail = Array.isArray(body.detail) ? body.detail.map((item: { msg?: string }) => item.msg).join(". ") : body.detail;
+      throw new ApiError(response.status, detail || "Something went wrong");
+    }
+    return body as T;
+  } catch (error) {
+    if (error instanceof ApiError) throw error;
+    if (error instanceof DOMException && error.name === "AbortError") throw new ApiError(0, "The server took too long to respond. Please try again.");
+    throw new ApiError(0, "Cannot reach the server. Check the connection and try again. For payments, refunds, or checkout, verify the record before submitting again.");
+  } finally {
+    if (timeout !== null) globalThis.clearTimeout(timeout);
   }
-  return body as T;
 }
 export const getHealth = (signal?: AbortSignal) => request<Health>("/health", { signal });
 export async function login(tenant_slug: string, email: string, password: string): Promise<User> {

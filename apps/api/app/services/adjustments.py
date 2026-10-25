@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, datetime
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.time import colombo_today
 from app.models.finance import (
     CreditNote,
     CreditNoteLine,
@@ -288,7 +289,7 @@ def convert_quotation(
         return db.get(Invoice, quotation.converted_invoice_id)
     if quotation.status != QuotationStatus.ISSUED:
         raise HTTPException(409, "Only issued quotations can be converted")
-    if quotation.expires_on and quotation.expires_on < date.today():
+    if quotation.expires_on and quotation.expires_on < colombo_today():
         quotation.status = QuotationStatus.EXPIRED
         raise HTTPException(409, "Quotation has expired")
     request, _, differences = conversion_preview(db, user, quotation)
