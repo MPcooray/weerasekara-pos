@@ -1,6 +1,9 @@
 from datetime import UTC, datetime, timedelta
 
-from app.core.security import hash_password
+import jwt
+
+from app.core.config import get_settings
+from app.core.security import create_access_token, hash_password
 from app.db.session import SessionLocal
 from app.models.tenant import Tenant
 from app.models.user import User, UserRole
@@ -119,3 +122,50 @@ def test_security_headers_prevent_api_caching(client):
     response = client.get("/api/v1/health")
     assert response.headers["cache-control"] == "no-store"
     assert response.headers["x-content-type-options"] == "nosniff"
+
+
+def test_invalid_signature_and_expired_tokens_are_rejected(client):
+    with SessionLocal() as db:
+        tenant = Tenant(name="JWT Optics", slug="jwt-optics")
+        db.add(tenant)
+        db.flush()
+        user = User(
+            tenant_id=tenant.id,
+            email="jwt@example.com",
+            full_name="JWT Owner",
+            password_hash=hash_password("SecurePassword123!"),
+            role=UserRole.OWNER,
+        )
+        db.add(user)
+        db.commit()
+        user_id, tenant_id = user.id, tenant.id
+    valid = create_access_token(
+        user_id=str(user_id), tenant_id=str(tenant_id), role="owner", session_version=1
+    )
+    assert (
+        client.get(
+            "/api/v1/auth/me", headers={"Authorization": f"Bearer {valid}corrupted"}
+        ).status_code
+        == 401
+    )
+    settings = get_settings()
+    now = datetime.now(UTC)
+    expired = jwt.encode(
+        {
+            "sub": str(user_id),
+            "tenant_id": str(tenant_id),
+            "role": "owner",
+            "sv": 1,
+            "iat": now - timedelta(hours=2),
+            "exp": now - timedelta(hours=1),
+            "jti": "00000000-0000-0000-0000-000000000001",
+            "iss": settings.jwt_issuer,
+            "aud": settings.jwt_issuer,
+        },
+        settings.secret_key,
+        algorithm="HS256",
+    )
+    assert (
+        client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {expired}"}).status_code
+        == 401
+    )

@@ -23,6 +23,9 @@ The initial memory limits total approximately 1.75 GB at peak including backup/m
 - Access tokens expire after 30 minutes by default and are revoked at logout.
 - Five failed known-account attempts lock login for 15 minutes by default.
 - API pool defaults to five persistent connections plus five overflow connections.
+- Database connects time out after 10 seconds and pooled connections recycle after 30 minutes by default.
+- JWTs carry a session generation checked against the current employee row. Credential, role and active-state changes revoke older sessions immediately.
+- Production request access logs are disabled because customer search values may appear in URLs. Do not re-enable them without query-string redaction.
 - JSON container logs rotate at 10 MB with five files per service.
 - Never enable `ALLOW_INITIAL_ADMIN_BOOTSTRAP` in production. Create the first owner using an audited, one-time administrative procedure, then remove the mechanism/credentials.
 - For an existing PostgreSQL volume, initialization scripts do not run again. Create/grant the application role under a reviewed maintenance procedure before switching `DATABASE_URL`; do not delete the volume to force initialization.
@@ -34,3 +37,5 @@ The initial memory limits total approximately 1.75 GB at peak including backup/m
 - Use `docker stats --no-stream`, `df -h`, `docker compose ... ps`, and `tail`/log shipping appropriate to the budget.
 - Configure the backup destination's object retention/versioning and an independent alert based on object age.
 - A lightweight external uptime monitor plus systemd timers/scripts is sufficient initially; no paid metrics stack is required.
+
+The host-side `ops/monitor/healthcheck.sh` checks web/API availability, readiness, disk usage and an optional backup-status file. Run it from a systemd timer or cron with `PUBLIC_BASE_URL` set to the real HTTPS origin. Alert on a non-zero exit code. Also monitor `docker compose ps`, restart counts, `docker stats --no-stream`, host memory and the off-server object's age; the script is intentionally not a full monitoring platform.

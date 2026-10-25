@@ -31,12 +31,8 @@ def upgrade() -> None:
         sa.Column("revoked_at", sa.DateTime(timezone=True), nullable=False),
     )
     op.create_index("ix_revoked_access_tokens_user_id", "revoked_access_tokens", ["user_id"])
-    op.create_index(
-        "ix_revoked_access_tokens_tenant_id", "revoked_access_tokens", ["tenant_id"]
-    )
-    op.create_index(
-        "ix_revoked_access_tokens_expires_at", "revoked_access_tokens", ["expires_at"]
-    )
+    op.create_index("ix_revoked_access_tokens_tenant_id", "revoked_access_tokens", ["tenant_id"])
+    op.create_index("ix_revoked_access_tokens_expires_at", "revoked_access_tokens", ["expires_at"])
 
 
 def downgrade() -> None:

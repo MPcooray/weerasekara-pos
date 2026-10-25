@@ -3,6 +3,7 @@ from functools import lru_cache
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Settings(BaseSettings):
@@ -18,6 +19,8 @@ class Settings(BaseSettings):
     login_lock_minutes: int = Field(default=15, ge=1, le=1440)
     database_pool_size: int = Field(default=5, ge=1, le=30)
     database_max_overflow: int = Field(default=5, ge=0, le=30)
+    database_connect_timeout_seconds: int = Field(default=10, ge=1, le=60)
+    database_pool_recycle_seconds: int = Field(default=1800, ge=60, le=86400)
     database_url: str = "sqlite:///./tetrova_pos.db"
     cors_origins: list[str] | str = ["http://localhost:5173"]
     cors_origin_regex: str | None = None
@@ -50,6 +53,11 @@ class Settings(BaseSettings):
             raise RuntimeError("A random SECRET_KEY of at least 48 characters is required")
         if not self.database_url.startswith("postgresql"):
             raise RuntimeError("Production requires PostgreSQL")
+        database = make_url(self.database_url)
+        if not database.username or database.username.lower() in {"postgres", "root"}:
+            raise RuntimeError("Production requires a dedicated application database user")
+        if not database.password or len(database.password) < 24:
+            raise RuntimeError("Production requires a strong application database password")
         if self.allow_initial_admin_bootstrap or self.initial_admin_password:
             raise RuntimeError("Production bootstrap credentials must be disabled")
         if not self.cors_origins or any(
@@ -63,6 +71,10 @@ class Settings(BaseSettings):
             or any("replace-with" in host for host in self.trusted_hosts)
         ):
             raise RuntimeError("Production TRUSTED_HOSTS must be explicit")
+        if self.cors_origin_regex:
+            raise RuntimeError("Production CORS origin regex must be disabled")
+        if not 5 <= self.access_token_expire_minutes <= 60:
+            raise RuntimeError("Production access-token lifetime must be between 5 and 60 minutes")
 
     @property
     def effective_cors_origin_regex(self) -> str | None:

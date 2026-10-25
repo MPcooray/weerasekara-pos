@@ -39,3 +39,4 @@ pg_restore --exit-on-error --no-owner --no-privileges --clean --if-exists \
   --dbname="$RESTORE_DATABASE" "$plain"
 psql --dbname="$RESTORE_DATABASE" -v ON_ERROR_STOP=1 -c \
   "SELECT version_num AS alembic_version FROM alembic_version; SELECT COUNT(*) AS customers FROM customers; SELECT COUNT(*) AS examinations FROM examinations; SELECT COUNT(*) AS invoices FROM invoices; SELECT COUNT(*) AS payments FROM payments; SELECT COUNT(*) AS stock_movements FROM stock_movements; SELECT COUNT(*) AS optical_orders FROM optical_orders;"
+psql --dbname="$RESTORE_DATABASE" --file=/opt/backup/verify_restore.sql

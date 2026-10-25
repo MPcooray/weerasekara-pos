@@ -25,6 +25,7 @@ def get_authenticated_user(db: DbSession, token: Annotated[str, Depends(oauth2_s
         user_id = UUID(str(payload["sub"]))
         tenant_id = UUID(str(payload["tenant_id"]))
         jti = str(payload["jti"])
+        session_version = int(payload["sv"])
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
         raise error from exc
     user = db.get(User, user_id)
@@ -32,6 +33,7 @@ def get_authenticated_user(db: DbSession, token: Annotated[str, Depends(oauth2_s
         user is None
         or not user.is_active
         or user.tenant_id != tenant_id
+        or user.session_version != session_version
         or db.get(RevokedAccessToken, jti) is not None
     ):
         raise error

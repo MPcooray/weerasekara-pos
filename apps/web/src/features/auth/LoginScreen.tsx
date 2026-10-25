@@ -4,8 +4,8 @@ import { login, type User } from "../../lib/api";
 
 export function LoginScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
   const [tenant, setTenant] = useState("weerasekara-optics");
-  const [email, setEmail] = useState("owner@weerasekara.lk");
-  const [password, setPassword] = useState("ChangeMe123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);

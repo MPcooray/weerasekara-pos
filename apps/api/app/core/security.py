@@ -18,13 +18,16 @@ def verify_password(password: str, password_digest: str) -> bool:
     return password_hash.verify(password, password_digest)
 
 
-def create_access_token(*, user_id: str, tenant_id: str, role: str) -> str:
+def create_access_token(
+    *, user_id: str, tenant_id: str, role: str, session_version: int = 1
+) -> str:
     settings = get_settings()
     now = datetime.now(UTC)
     claims = {
         "sub": user_id,
         "tenant_id": tenant_id,
         "role": role,
+        "sv": session_version,
         "iat": now,
         "exp": now + timedelta(minutes=settings.access_token_expire_minutes),
         "jti": str(uuid4()),
@@ -42,5 +45,5 @@ def decode_access_token(token: str) -> dict[str, object]:
         algorithms=["HS256"],
         issuer=settings.jwt_issuer,
         audience=settings.jwt_issuer,
-        options={"require": ["sub", "tenant_id", "role", "iat", "exp", "jti", "iss", "aud"]},
+        options={"require": ["sub", "tenant_id", "role", "sv", "iat", "exp", "jti", "iss", "aud"]},
     )

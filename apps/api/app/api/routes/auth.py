@@ -4,7 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy import select
+from sqlalchemy import delete, select
 
 from app.api.dependencies import AuthenticatedUser, DbSession
 from app.core.config import get_settings
@@ -18,7 +18,13 @@ from app.core.security import (
 )
 from app.models.tenant import Tenant
 from app.models.user import RevokedAccessToken, User
-from app.schemas.auth import LoginRequest, PasswordChange, TokenResponse, UserResponse
+from app.schemas.auth import (
+    LoginRequest,
+    PasswordChange,
+    PasswordChangeResponse,
+    TokenResponse,
+    UserResponse,
+)
 from app.services.audit import record_audit
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
@@ -35,6 +41,7 @@ def _aware(value: datetime | None) -> datetime | None:
 def login(credentials: LoginRequest, db: DbSession) -> TokenResponse:
     settings = get_settings()
     now = datetime.now(UTC)
+    db.execute(delete(RevokedAccessToken).where(RevokedAccessToken.expires_at < now))
     query = (
         select(User)
         .join(Tenant)
@@ -60,7 +67,10 @@ def login(credentials: LoginRequest, db: DbSession) -> TokenResponse:
     user.locked_until = None
     db.commit()
     token = create_access_token(
-        user_id=str(user.id), tenant_id=str(user.tenant_id), role=user.role.value
+        user_id=str(user.id),
+        tenant_id=str(user.tenant_id),
+        role=user.role.value,
+        session_version=user.session_version,
     )
     return TokenResponse(access_token=token)
 
@@ -94,8 +104,10 @@ def logout(
         db.commit()
 
 
-@router.post("/change-password", response_model=UserResponse)
-def change_password(data: PasswordChange, user: AuthenticatedUser, db: DbSession) -> UserResponse:
+@router.post("/change-password", response_model=PasswordChangeResponse)
+def change_password(
+    data: PasswordChange, user: AuthenticatedUser, db: DbSession
+) -> PasswordChangeResponse:
     if not verify_password(data.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
     if data.current_password == data.new_password:
@@ -105,6 +117,7 @@ def change_password(data: PasswordChange, user: AuthenticatedUser, db: DbSession
     user.failed_login_attempts = 0
     user.locked_until = None
     user.version += 1
+    user.session_version += 1
     record_audit(
         db,
         tenant_id=user.tenant_id,
@@ -114,4 +127,10 @@ def change_password(data: PasswordChange, user: AuthenticatedUser, db: DbSession
         entity_id=user.id,
     )
     db.commit()
-    return me(user)
+    replacement = create_access_token(
+        user_id=str(user.id),
+        tenant_id=str(user.tenant_id),
+        role=user.role.value,
+        session_version=user.session_version,
+    )
+    return PasswordChangeResponse(access_token=replacement, user=me(user))

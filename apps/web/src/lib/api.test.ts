@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getCustomers, getInvoices, login, logoutSession, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
+import { changePassword, compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getCustomers, getInvoices, login, logoutSession, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -145,5 +145,16 @@ describe("authenticated customer API", () => {
     expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Authorization"))
       .toBe("Bearer active-token");
     expect(storage.has("tetrova_access_token")).toBe(false);
+  });
+
+  it("atomically replaces the local token after a password change", async () => {
+    storage.set("tetrova_access_token", "old-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      access_token: "replacement-token",
+      user: { id: "1", role: "cashier", must_change_password: false },
+    }), { status: 200 })));
+    const user = await changePassword("Temporary123!", "Permanent456!");
+    expect(user.must_change_password).toBe(false);
+    expect(storage.get("tetrova_access_token")).toBe("replacement-token");
   });
 });

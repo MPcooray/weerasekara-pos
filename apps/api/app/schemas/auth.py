@@ -32,3 +32,9 @@ class UserResponse(BaseModel):
     permissions: list[str] = []
 
     model_config = {"from_attributes": True}
+
+
+class PasswordChangeResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user: UserResponse

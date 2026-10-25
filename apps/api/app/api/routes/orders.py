@@ -11,6 +11,8 @@ from app.core.permissions import (
     ORDER_QUALITY_ROLES,
     ORDER_SUPPLIER_ROLES,
     ORDER_WRITE_ROLES,
+    Permission,
+    has_permission,
 )
 from app.core.time import colombo_today
 from app.models.customer import Customer
@@ -58,15 +60,17 @@ def staff_options(user: CurrentUser, db: DbSession):
     ]
 
 
-def response(db: DbSession, item: OpticalOrder) -> OrderResponse:
+def response(db: DbSession, item: OpticalOrder, user) -> OrderResponse:
+    can_view_finance = has_permission(user, Permission.INVOICES_VIEW)
+    can_view_supplier = has_permission(user, Permission.SUPPLIERS_VIEW)
     outstanding = (
         db.scalar(
             select(Invoice.outstanding_minor).where(
                 Invoice.id == item.invoice_id, Invoice.tenant_id == item.tenant_id
             )
         )
-        if item.invoice_id
-        else 0
+        if item.invoice_id and can_view_finance
+        else None
     )
     supplier = item.supplier_order
     quality = item.quality_check
@@ -87,7 +91,7 @@ def response(db: DbSession, item: OpticalOrder) -> OrderResponse:
             and item.expected_collection_date < colombo_today()
             and item.status not in {OpticalOrderStatus.COLLECTED, OpticalOrderStatus.CANCELLED}
         ),
-        outstanding_minor=outstanding or 0,
+        outstanding_minor=outstanding if can_view_finance else None,
         frame_snapshot=item.frame_snapshot,
         prescription_snapshot=item.prescription_snapshot,
         lens_type=item.lens_type,
@@ -124,7 +128,7 @@ def response(db: DbSession, item: OpticalOrder) -> OrderResponse:
             notes=supplier.notes,
             version=supplier.version,
         )
-        if supplier
+        if supplier and can_view_supplier
         else None,
         quality_check=QualityCheckResponse(
             id=quality.id,
@@ -143,8 +147,10 @@ def response(db: DbSession, item: OpticalOrder) -> OrderResponse:
             actor_id=collection.actor_id,
             collected_at=collection.collected_at,
             notes=collection.notes,
-            outstanding_minor_at_collection=collection.outstanding_minor_at_collection,
-            outstanding_override=collection.outstanding_override,
+            outstanding_minor_at_collection=(
+                collection.outstanding_minor_at_collection if can_view_finance else None
+            ),
+            outstanding_override=collection.outstanding_override if can_view_finance else None,
         )
         if collection
         else None,
@@ -163,7 +169,7 @@ def create(
     try:
         item = create_order(db, user, data, key)
         db.commit()
-        return response(db, load_order(db, user.tenant_id, item.id))
+        return response(db, load_order(db, user.tenant_id, item.id), user)
     except HTTPException:
         db.rollback()
         raise
@@ -225,7 +231,7 @@ def directory(
         .limit(page_size)
     ).all()
     return OrderPage(
-        items=[response(db, load_order(db, user.tenant_id, x.id)) for x in items],
+        items=[response(db, load_order(db, user.tenant_id, x.id), user) for x in items],
         page=page,
         page_size=page_size,
         total=total,
@@ -235,7 +241,7 @@ def directory(
 
 @router.get("/{order_id}", response_model=OrderResponse)
 def detail(order_id: UUID, user: CurrentUser, db: DbSession):
-    return response(db, load_order(db, user.tenant_id, order_id))
+    return response(db, load_order(db, user.tenant_id, order_id), user)
 
 
 @router.put("/{order_id}", response_model=OrderResponse)
@@ -245,7 +251,7 @@ def edit(order_id: UUID, data: OrderUpdate, user: CurrentUser, db: DbSession):
     try:
         item = update_order(db, user, load_order(db, user.tenant_id, order_id, lock=True), data)
         db.commit()
-        return response(db, load_order(db, user.tenant_id, item.id))
+        return response(db, load_order(db, user.tenant_id, item.id), user)
     except HTTPException:
         db.rollback()
         raise
@@ -264,7 +270,7 @@ def transition(
     try:
         item = transition_order(db, user, order_id, data, key)
         db.commit()
-        return response(db, load_order(db, user.tenant_id, item.id))
+        return response(db, load_order(db, user.tenant_id, item.id), user)
     except HTTPException:
         db.rollback()
         raise
@@ -330,7 +336,7 @@ def collect(
     try:
         item = collect_order(db, user, order_id, data, key)
         db.commit()
-        return response(db, load_order(db, user.tenant_id, item.id))
+        return response(db, load_order(db, user.tenant_id, item.id), user)
     except HTTPException:
         db.rollback()
         raise

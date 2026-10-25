@@ -98,8 +98,8 @@ class CollectionResponse(BaseModel):
     actor_id: UUID
     collected_at: datetime
     notes: str | None
-    outstanding_minor_at_collection: int
-    outstanding_override: bool
+    outstanding_minor_at_collection: int | None
+    outstanding_override: bool | None
 
 
 class OrderResponse(BaseModel):
@@ -114,7 +114,7 @@ class OrderResponse(BaseModel):
     status: str
     expected_collection_date: date | None
     overdue: bool
-    outstanding_minor: int
+    outstanding_minor: int | None
     frame_snapshot: dict | None
     prescription_snapshot: dict
     lens_type: str

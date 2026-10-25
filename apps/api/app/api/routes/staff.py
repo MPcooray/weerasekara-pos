@@ -32,7 +32,9 @@ def get_staff(db: DbSession, user: User, staff_id: UUID, *, lock: bool = False) 
 def active_owner_count(db: DbSession, tenant_id: UUID) -> int:
     return int(
         db.scalar(
-            select(func.count()).select_from(User).where(
+            select(func.count())
+            .select_from(User)
+            .where(
                 User.tenant_id == tenant_id,
                 User.role == UserRole.OWNER,
                 User.is_active.is_(True),
@@ -82,9 +84,7 @@ def create_staff(data: StaffCreate, user: CurrentUser, db: DbSession):
 
 
 @router.patch("/{staff_id}", response_model=StaffResponse)
-def update_staff(
-    staff_id: UUID, data: StaffUpdate, user: CurrentUser, db: DbSession
-) -> User:
+def update_staff(staff_id: UUID, data: StaffUpdate, user: CurrentUser, db: DbSession) -> User:
     require_manage(user)
     item = get_staff(db, user, staff_id, lock=True)
     values = data.model_dump(exclude_unset=True)
@@ -97,15 +97,20 @@ def update_staff(
     )
     if item.id == user.id and self_privilege_change:
         raise HTTPException(409, "You cannot change your own role or deactivate your account")
-    removing_owner = item.role == UserRole.OWNER and item.is_active and (
-        values.get("role", item.role) != UserRole.OWNER or values.get("is_active") is False
+    removing_owner = (
+        item.role == UserRole.OWNER
+        and item.is_active
+        and (values.get("role", item.role) != UserRole.OWNER or values.get("is_active") is False)
     )
     if removing_owner and active_owner_count(db, user.tenant_id) <= 1:
         raise HTTPException(409, "The last active owner cannot be removed")
     old_role = item.role
+    old_active = item.is_active
     for key, value in values.items():
         setattr(item, key, value)
     item.version += 1
+    if item.role != old_role or item.is_active != old_active:
+        item.session_version += 1
     action = "staff.role_changed" if item.role != old_role else "staff.updated"
     record_audit(
         db,
@@ -132,6 +137,7 @@ def reset_credentials(
     item.failed_login_attempts = 0
     item.locked_until = None
     item.version += 1
+    item.session_version += 1
     record_audit(
         db,
         tenant_id=user.tenant_id,

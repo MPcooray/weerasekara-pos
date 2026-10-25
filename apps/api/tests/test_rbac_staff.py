@@ -104,14 +104,14 @@ def test_owner_employee_lifecycle_and_forced_password_change(authenticated_clien
         json={"current_password": "Temporary123!", "new_password": "Permanent456!"},
     )
     assert changed.status_code == 200
-    assert changed.json()["must_change_password"] is False
-    assert authenticated_client.get("/api/v1/customers", headers=temporary).status_code == 200
+    assert changed.json()["user"]["must_change_password"] is False
+    assert authenticated_client.get("/api/v1/customers", headers=temporary).status_code == 401
+    replacement = {"Authorization": f"Bearer {changed.json()['access_token']}"}
+    assert authenticated_client.get("/api/v1/customers", headers=replacement).status_code == 200
 
-    disabled = authenticated_client.patch(
-        f"/api/v1/staff/{employee_id}", json={"is_active": False}
-    )
+    disabled = authenticated_client.patch(f"/api/v1/staff/{employee_id}", json={"is_active": False})
     assert disabled.status_code == 200
-    assert authenticated_client.get("/api/v1/auth/me", headers=temporary).status_code == 401
+    assert authenticated_client.get("/api/v1/auth/me", headers=replacement).status_code == 401
     with SessionLocal() as db:
         actions = set(db.scalars(select(AuditLog.action)).all())
         assert {"staff.created", "staff.updated", "staff.password_changed"} <= actions
@@ -153,12 +153,14 @@ def test_staff_management_guards_and_tenant_isolation(authenticated_client):
 
 def test_credential_reset_forces_change_and_is_audited(authenticated_client):
     employee = add_user(UserRole.CASHIER, "reset-rbac@example.com")
+    old_session = login(authenticated_client, "weerasekara-optics", employee.email)
     response = authenticated_client.post(
         f"/api/v1/staff/{employee.id}/reset-credentials",
         json={"temporary_password": "Replacement789!"},
     )
     assert response.status_code == 200
     assert response.json()["must_change_password"] is True
+    assert authenticated_client.get("/api/v1/auth/me", headers=old_session).status_code == 401
     with SessionLocal() as db:
         assert db.scalar(
             select(AuditLog).where(
@@ -166,3 +168,17 @@ def test_credential_reset_forces_change_and_is_audited(authenticated_client):
                 AuditLog.action == "staff.credentials_reset",
             )
         )
+
+
+def test_role_change_invalidates_existing_session(authenticated_client):
+    employee = add_user(UserRole.CASHIER, "role-session@example.com")
+    old_session = login(authenticated_client, "weerasekara-optics", employee.email)
+    assert authenticated_client.get("/api/v1/auth/me", headers=old_session).status_code == 200
+    changed = authenticated_client.patch(
+        f"/api/v1/staff/{employee.id}", json={"role": "optometrist"}
+    )
+    assert changed.status_code == 200
+    assert authenticated_client.get("/api/v1/auth/me", headers=old_session).status_code == 401
+    new_session = login(authenticated_client, "weerasekara-optics", employee.email)
+    profile = authenticated_client.get("/api/v1/auth/me", headers=new_session)
+    assert profile.json()["role"] == "optometrist"

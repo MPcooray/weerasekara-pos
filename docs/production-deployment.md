@@ -24,7 +24,18 @@ docker compose --env-file .env.production -f compose.production.yaml up -d db mi
 docker compose --env-file .env.production -f compose.production.yaml --profile backup up -d backup
 ```
 
-Verify `docker compose ... ps`, migration completion, `https://DOMAIN/api/v1/health`, readiness, login, a read-only report and backup upload. Do not expose the bootstrap password. Establish the first owner through an audited one-time procedure.
+Provision the first owner interactively after migrations. The script refuses a tenant that already has employees and never accepts a password on the command line:
+
+```bash
+docker compose --env-file .env.production -f compose.production.yaml run --rm --no-deps -it api \
+  python scripts/provision_owner.py \
+  --tenant-name "Weerasekara Optics" \
+  --tenant-slug "weerasekara-optics" \
+  --owner-name "<verified owner name>" \
+  --owner-email "<verified owner email>"
+```
+
+The first login requires another password replacement and provisioning is audited. Verify `docker compose ... ps`, migration completion, `https://DOMAIN/api/v1/health`, readiness, owner login, a read-only report and backup upload.
 
 ## Updates
 
@@ -45,3 +56,4 @@ Application-only rollback: return to the prior commit/images if its schema is fo
 - Rotate JWT/database/backup/object-store credentials after suspected exposure and on policy cadence.
 - Restrict `.env.production`, backup passphrases, exports and database dumps to authorized administrators.
 - Keep an incident contact list and a tested procedure for disabling access, preserving logs and notifying affected parties after professional review.
+- Install `ops/monitor/healthcheck.sh` under a systemd timer and route non-zero results to an operator-controlled alert channel. Keep request access logging disabled unless its redaction has been verified.

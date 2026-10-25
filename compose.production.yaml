@@ -19,6 +19,8 @@ services:
       retries: 10
     mem_limit: 640m
     cpus: 0.75
+    stop_grace_period: 60s
+    security_opt: ["no-new-privileges:true"]
     logging: &logging
       driver: json-file
       options: {max-size: "10m", max-file: "5"}
@@ -37,6 +39,7 @@ services:
     depends_on:
       db: {condition: service_healthy}
     mem_limit: 256m
+    security_opt: ["no-new-privileges:true"]
     logging: *logging
 
   api:
@@ -48,6 +51,7 @@ services:
     environment:
       FORWARDED_ALLOW_IPS: 172.16.0.0/12
       RUN_MIGRATIONS: "false"
+      UVICORN_ACCESS_LOG_FLAG: "--no-access-log"
     expose: ["8000"]
     networks: [backend, edge]
     depends_on:
@@ -61,6 +65,8 @@ services:
       start_period: 30s
     mem_limit: 384m
     cpus: 0.75
+    stop_grace_period: 30s
+    security_opt: ["no-new-privileges:true"]
     logging: *logging
 
   web:
@@ -79,6 +85,8 @@ services:
       retries: 3
     mem_limit: 96m
     cpus: 0.25
+    stop_grace_period: 15s
+    security_opt: ["no-new-privileges:true"]
     logging: *logging
 
   proxy:
@@ -98,6 +106,8 @@ services:
       web: {condition: service_healthy}
     mem_limit: 128m
     cpus: 0.25
+    stop_grace_period: 30s
+    security_opt: ["no-new-privileges:true"]
     logging: *logging
 
   backup:
@@ -124,8 +134,16 @@ services:
     networks: [backend, edge]
     depends_on:
       db: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /backups/last-backup-status && grep -q '^status=succeeded$$' /backups/last-backup-status"]
+      interval: 30m
+      timeout: 5s
+      retries: 2
+      start_period: 5m
     mem_limit: 256m
     cpus: 0.5
+    stop_grace_period: 30s
+    security_opt: ["no-new-privileges:true"]
     logging: *logging
 
 networks:

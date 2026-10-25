@@ -33,6 +33,7 @@ class User(IdMixin, TimestampMixin, Base):
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     must_change_password: Mapped[bool] = mapped_column(default=False, nullable=False)
+    session_version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
 

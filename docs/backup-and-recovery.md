@@ -18,7 +18,7 @@ Run a manual backup without starting the scheduler:
 docker compose --env-file .env.production -f compose.production.yaml run --rm --entrypoint /opt/backup/backup.sh backup
 ```
 
-Review `/backups/backup.log` inside the backup volume and verify that a recent encrypted object and checksum exist off-server. Default interval is 86,400 seconds and local retention is 14 days.
+Review `/backups/backup.log` and `/backups/last-backup-status` inside the backup volume and verify that a recent encrypted object and checksum exist off-server. Failures update both the log and status file, and the backup container becomes unhealthy after a failed run. Default interval is 86,400 seconds, the minimum accepted interval is five minutes, and local retention is 14 days.
 
 ## Restore drill — never target production
 
@@ -35,7 +35,7 @@ docker compose --env-file .env.production -f compose.production.yaml run --rm \
   -v /absolute/temporary/restore:/restore:ro backup
 ```
 
-The restore script refuses the configured source database and any existing target database by default, validates database-name syntax, checksum, decryption and dump catalog, restores with stop-on-error, and reports Alembic version plus counts for customers, examinations, invoices, payments, movements and orders. `RESTORE_ALLOW_EXISTING=true` is an explicit destructive override reserved for a verified disposable target.
+The restore script refuses the configured source database and any existing target database by default, validates database-name syntax, checksum, decryption and dump catalog, restores with stop-on-error, and runs `verify_restore.sql`. Verification checks invoice balance equations, inventory ledger reconciliation, tenant links for employees/clinical records/orders, Alembic presence, and representative record/financial totals. `RESTORE_ALLOW_EXISTING=true` is an explicit destructive override reserved for a verified disposable target.
 
 4. Run the application against the restored database in an isolated environment.
 5. Verify representative tenant records, finalized prescriptions, invoice/payment totals, stock balance versus movement ledger, order snapshots/status, refund/credit totals and the financial report for a known date range.
@@ -47,3 +47,4 @@ The restore script refuses the configured source database and any existing targe
 - **RTO:** restore duration plus validation and DNS/application recovery. Measure with the real dataset; no fixed RTO is promised.
 - Custom dumps are logical backups, not point-in-time recovery. They do not include Caddy state, environment secrets or exported documents.
 - Perform a restore drill at least quarterly and after PostgreSQL/backup-tool upgrades.
+- Backup encryption is only as strong as the separately stored passphrase. Losing it makes recovery impossible; compromise exposes every retained dump.

@@ -7,5 +7,6 @@ if [ "${MIGRATION_ONLY:-false}" = "true" ]; then
   exit 0
 fi
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000 \
-  --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}"
+  --proxy-headers --forwarded-allow-ips "${FORWARDED_ALLOW_IPS:-127.0.0.1}" \
+  ${UVICORN_ACCESS_LOG_FLAG:---access-log}
 

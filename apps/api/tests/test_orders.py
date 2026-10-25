@@ -211,8 +211,15 @@ def test_cancellation_search_isolation_and_permissions(authenticated_client, cli
             password_hash=hash_password("SafePassword123!"),
             role=UserRole.CASHIER,
         )
+        optometrist = User(
+            tenant_id=primary.id,
+            email="order-optometrist@example.com",
+            full_name="Optometrist",
+            password_hash=hash_password("SafePassword123!"),
+            role=UserRole.OPTOMETRIST,
+        )
         other = Tenant(name="Other Orders", slug="other-orders")
-        db.add_all([cashier, other])
+        db.add_all([cashier, optometrist, other])
         db.flush()
         owner = User(
             tenant_id=other.id,
@@ -229,6 +236,11 @@ def test_cancellation_search_isolation_and_permissions(authenticated_client, cli
         other_token = create_access_token(
             user_id=str(owner.id), tenant_id=str(other.id), role=owner.role.value
         )
+        optometrist_token = create_access_token(
+            user_id=str(optometrist.id),
+            tenant_id=str(primary.id),
+            role=optometrist.role.value,
+        )
     assert (
         client.put(
             f"/api/v1/orders/{order['id']}/supplier",
@@ -243,6 +255,13 @@ def test_cancellation_search_isolation_and_permissions(authenticated_client, cli
         ).status_code
         == 404
     )
+    clinical_order = client.get(
+        f"/api/v1/orders/{order['id']}",
+        headers={"Authorization": f"Bearer {optometrist_token}"},
+    )
+    assert clinical_order.status_code == 200
+    assert clinical_order.json()["outstanding_minor"] is None
+    assert clinical_order.json()["supplier_order"] is None
 
 
 def test_postgresql_concurrent_transition(authenticated_client):
