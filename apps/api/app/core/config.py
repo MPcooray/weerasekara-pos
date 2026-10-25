@@ -13,9 +13,15 @@ class Settings(BaseSettings):
     api_v1_prefix: str = "/api/v1"
     secret_key: str = Field(default="local-development-secret-change-me", min_length=32)
     access_token_expire_minutes: int = 30
+    jwt_issuer: str = "tetrova-optical-pos"
+    login_max_attempts: int = Field(default=5, ge=3, le=20)
+    login_lock_minutes: int = Field(default=15, ge=1, le=1440)
+    database_pool_size: int = Field(default=5, ge=1, le=30)
+    database_max_overflow: int = Field(default=5, ge=0, le=30)
     database_url: str = "sqlite:///./tetrova_pos.db"
     cors_origins: list[str] | str = ["http://localhost:5173"]
     cors_origin_regex: str | None = None
+    trusted_hosts: list[str] | str = ["*"]
     initial_tenant_name: str = "Weerasekara Optics"
     initial_tenant_slug: str = "weerasekara-optics"
     initial_admin_email: str = "owner@weerasekara.lk"
@@ -29,7 +35,7 @@ class Settings(BaseSettings):
     optical_pd_max: Decimal = Decimal("90.00")
     require_quarter_diopter_steps: bool = True
 
-    @field_validator("cors_origins", mode="before")
+    @field_validator("cors_origins", "trusted_hosts", mode="before")
     @classmethod
     def parse_origins(cls, value: object) -> object:
         if isinstance(value, str):
@@ -37,8 +43,26 @@ class Settings(BaseSettings):
         return value
 
     def validate_production(self) -> None:
-        if self.app_env == "production" and "change-me" in self.secret_key.lower():
-            raise RuntimeError("A secure SECRET_KEY is required in production")
+        if self.app_env != "production":
+            return
+        insecure_markers = ("change-me", "development", "local-", "generate-")
+        if len(self.secret_key) < 48 or any(x in self.secret_key.lower() for x in insecure_markers):
+            raise RuntimeError("A random SECRET_KEY of at least 48 characters is required")
+        if not self.database_url.startswith("postgresql"):
+            raise RuntimeError("Production requires PostgreSQL")
+        if self.allow_initial_admin_bootstrap or self.initial_admin_password:
+            raise RuntimeError("Production bootstrap credentials must be disabled")
+        if not self.cors_origins or any(
+            not origin.startswith("https://") or "replace-with" in origin
+            for origin in self.cors_origins
+        ):
+            raise RuntimeError("Production CORS origins must be explicit HTTPS origins")
+        if (
+            not self.trusted_hosts
+            or "*" in self.trusted_hosts
+            or any("replace-with" in host for host in self.trusted_hosts)
+        ):
+            raise RuntimeError("Production TRUSTED_HOSTS must be explicit")
 
     @property
     def effective_cors_origin_regex(self) -> str | None:

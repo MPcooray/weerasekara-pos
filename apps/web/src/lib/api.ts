@@ -94,6 +94,11 @@ export async function login(tenant_slug: string, email: string, password: string
   return getCurrentUser();
 }
 export function logout() { sessionStorage.removeItem(TOKEN_KEY); }
+export async function logoutSession() {
+  try { await request<void>("/auth/logout", { method: "POST" }); }
+  catch { /* Local logout must still succeed when the server is unavailable. */ }
+  finally { logout(); }
+}
 export function hasSession() { return Boolean(token()); }
 export const getCurrentUser = () => request<User>("/auth/me");
 export function getCustomers(search = "", page = 1) { return request<CustomerPage>(`/customers?${new URLSearchParams({ search, page: String(page), page_size: "12" })}`); }

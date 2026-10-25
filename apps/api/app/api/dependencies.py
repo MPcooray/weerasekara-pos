@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.security import decode_access_token
 from app.db.session import get_db
-from app.models.user import User
+from app.models.user import RevokedAccessToken, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 DbSession = Annotated[Session, Depends(get_db)]
@@ -24,10 +24,16 @@ def get_current_user(db: DbSession, token: Annotated[str, Depends(oauth2_scheme)
         payload = decode_access_token(token)
         user_id = UUID(str(payload["sub"]))
         tenant_id = UUID(str(payload["tenant_id"]))
+        jti = str(payload["jti"])
     except (jwt.PyJWTError, KeyError, ValueError) as exc:
         raise error from exc
     user = db.get(User, user_id)
-    if user is None or not user.is_active or user.tenant_id != tenant_id:
+    if (
+        user is None
+        or not user.is_active
+        or user.tenant_id != tenant_id
+        or db.get(RevokedAccessToken, jti) is not None
+    ):
         raise error
     return user
 

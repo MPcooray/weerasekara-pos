@@ -29,7 +29,7 @@ from app.models.order import (
 from app.models.product import Product
 from app.models.supplier import Supplier
 from app.models.tenant import Tenant
-from app.models.user import User
+from app.models.user import RevokedAccessToken, User
 from app.models.visit import Visit
 
 __all__ = [
@@ -43,6 +43,7 @@ __all__ = [
     "Supplier",
     "Tenant",
     "User",
+    "RevokedAccessToken",
     "Visit",
     "Invoice",
     "InvoiceLine",

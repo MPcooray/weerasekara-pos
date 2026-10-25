@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getCustomers, getInvoices, login, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getCustomers, getInvoices, login, logoutSession, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -134,5 +134,16 @@ describe("authenticated customer API", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     await expect(confirmCheckout({ invoice_discount_minor: 0, lines: [] }, "safe-key"))
       .rejects.toThrow("verify the record before submitting again");
+  });
+
+  it("revokes the server token before clearing the local session", async () => {
+    storage.set("tetrova_access_token", "active-token");
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 204 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await logoutSession();
+    expect(fetchMock.mock.calls[0][0]).toContain("/auth/logout");
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Authorization"))
+      .toBe("Bearer active-token");
+    expect(storage.has("tetrova_access_token")).toBe(false);
   });
 });

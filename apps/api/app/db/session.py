@@ -20,6 +20,9 @@ engine_options: dict[str, object] = {
 }
 if settings.database_url in {"sqlite://", "sqlite:///:memory:"}:
     engine_options["poolclass"] = StaticPool
+elif not is_sqlite:
+    engine_options["pool_size"] = settings.database_pool_size
+    engine_options["max_overflow"] = settings.database_max_overflow
 engine = create_engine(settings.database_url, **engine_options)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 

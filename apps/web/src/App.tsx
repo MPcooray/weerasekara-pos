@@ -8,7 +8,7 @@ import { OrderWorkspace } from "./features/orders/OrderWorkspace";
 import { PosWorkspace } from "./features/pos/PosWorkspace";
 import { QuotationWorkspace } from "./features/pos/QuotationWorkspace";
 import { ReportingWorkspace } from "./features/reporting/ReportingWorkspace";
-import { getBranding, getCurrentUser, hasSession, logout, type User } from "./lib/api";
+import { getBranding, getCurrentUser, hasSession, logout, logoutSession, type User } from "./lib/api";
 
 type Section = "customers" | "inventory" | "pos" | "quotes" | "orders" | "reports";
 
@@ -23,7 +23,7 @@ export function App() {
   useEffect(() => { if (user) getBranding().then(x => setBusinessName(x.business_display_name)).catch(() => undefined); }, [user]);
   if (checking) return <main className="splash"><div className="brand__mark">T</div><div className="spinner" /><p>Opening your workspace…</p></main>;
   if (!user) return <LoginScreen onAuthenticated={setUser} />;
-  function signOut() { logout(); setUser(null); setSelectedCustomer(null); }
+  async function signOut() { await logoutSession(); setUser(null); setSelectedCustomer(null); }
   function customers() { setSection("customers"); setSelectedCustomer(null); }
   const canReport = user.role === "owner" || user.role === "manager";
   const content = section === "reports" ? <ReportingWorkspace /> : section === "orders" ? <OrderWorkspace role={user.role} /> : section === "quotes" ? <QuotationWorkspace role={user.role} /> : section === "pos" ? <PosWorkspace role={user.role} /> : section === "inventory" ? <InventoryWorkspace role={user.role} /> : selectedCustomer ? <CustomerProfile customerId={selectedCustomer} userRole={user.role} onBack={() => setSelectedCustomer(null)} /> : <CustomerDirectory onSelect={setSelectedCustomer} />;
