@@ -20,31 +20,6 @@ class UserRole(str, enum.Enum):
     CASHIER = "cashier"
 
 
-CUSTOMER_READ_ROLES = set(UserRole)
-CUSTOMER_WRITE_ROLES = set(UserRole)
-CUSTOMER_ARCHIVE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-EXAMINATION_FULL_READ_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.OPTOMETRIST}
-EXAMINATION_WRITE_ROLES = {UserRole.OWNER, UserRole.OPTOMETRIST}
-CATALOG_READ_ROLES = set(UserRole)
-INVENTORY_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-SUPPLIER_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-CHECKOUT_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
-INVOICE_READ_ROLES = set(UserRole)
-PAYMENT_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
-QUOTATION_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
-RETURN_REQUEST_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
-RETURN_APPROVE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-REFUND_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-REPORT_READ_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-BRANDING_WRITE_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-ORDER_READ_ROLES = set(UserRole)
-ORDER_WRITE_ROLES = set(UserRole)
-ORDER_SUPPLIER_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-ORDER_QUALITY_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.OPTOMETRIST}
-ORDER_COLLECTION_ROLES = {UserRole.OWNER, UserRole.MANAGER, UserRole.CASHIER}
-ORDER_CANCEL_ROLES = {UserRole.OWNER, UserRole.MANAGER}
-
-
 class User(IdMixin, TimestampMixin, Base):
     __tablename__ = "users"
     __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_users_tenant_email"),)
@@ -57,6 +32,7 @@ class User(IdMixin, TimestampMixin, Base):
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False)
     failed_login_attempts: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    must_change_password: Mapped[bool] = mapped_column(default=False, nullable=False)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users")
 

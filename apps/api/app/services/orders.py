@@ -6,6 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from app.core.permissions import Permission, has_permission
 from app.models.customer import Customer
 from app.models.examination import Examination, ExaminationStatus
 from app.models.finance import Invoice
@@ -479,7 +480,7 @@ def collect_order(
         raise HTTPException(
             409, "Invoice has an outstanding balance; explicit authorized override is required"
         )
-    if outstanding and user.role not in {UserRole.OWNER, UserRole.MANAGER}:
+    if outstanding and not has_permission(user, Permission.ORDERS_OVERRIDE_BALANCE):
         raise HTTPException(
             403, "Only owners and managers may authorize collection with an outstanding balance"
         )

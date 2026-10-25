@@ -14,7 +14,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 DbSession = Annotated[Session, Depends(get_db)]
 
 
-def get_current_user(db: DbSession, token: Annotated[str, Depends(oauth2_scheme)]) -> User:
+def get_authenticated_user(db: DbSession, token: Annotated[str, Depends(oauth2_scheme)]) -> User:
     error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Invalid or expired credentials",
@@ -38,4 +38,11 @@ def get_current_user(db: DbSession, token: Annotated[str, Depends(oauth2_scheme)
     return user
 
 
+def get_current_user(user: Annotated[User, Depends(get_authenticated_user)]) -> User:
+    if user.must_change_password:
+        raise HTTPException(status_code=403, detail="Password change required")
+    return user
+
+
+AuthenticatedUser = Annotated[User, Depends(get_authenticated_user)]
 CurrentUser = Annotated[User, Depends(get_current_user)]

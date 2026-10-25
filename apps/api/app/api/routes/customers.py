@@ -7,8 +7,9 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentUser, DbSession
+from app.core.permissions import CUSTOMER_ARCHIVE_ROLES, CUSTOMER_WRITE_ROLES
 from app.models.customer import Customer
-from app.models.user import CUSTOMER_ARCHIVE_ROLES, CUSTOMER_WRITE_ROLES, User
+from app.models.user import User
 from app.models.visit import Visit
 from app.schemas.customer import (
     CustomerCreate,

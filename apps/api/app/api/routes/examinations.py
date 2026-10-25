@@ -6,9 +6,10 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import joinedload
 
 from app.api.dependencies import CurrentUser, DbSession
+from app.core.permissions import EXAMINATION_FULL_READ_ROLES, EXAMINATION_WRITE_ROLES
 from app.models.customer import Customer
 from app.models.examination import Examination, ExaminationStatus
-from app.models.user import EXAMINATION_FULL_READ_ROLES, EXAMINATION_WRITE_ROLES, User, UserRole
+from app.models.user import User, UserRole
 from app.models.visit import Visit
 from app.schemas.examination import (
     MEASUREMENT_FIELDS,

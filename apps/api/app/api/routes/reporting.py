@@ -7,8 +7,8 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 
 from app.api.dependencies import CurrentUser, DbSession
+from app.core.permissions import BRANDING_WRITE_ROLES, REPORT_READ_ROLES
 from app.models.tenant import Tenant
-from app.models.user import BRANDING_WRITE_ROLES, REPORT_READ_ROLES
 from app.schemas.reporting import (
     BrandingResponse,
     BrandingUpdate,

@@ -147,6 +147,8 @@ class ProductUpdate(BaseModel):
 
 
 class ProductResponse(ProductBase):
+    cost_price_minor: int | None = None
+    supplier_id: UUID | None = None
     id: UUID
     tenant_id: UUID
     is_archived: bool
@@ -224,5 +226,5 @@ class InventorySummary(BaseModel):
     total_units: int
     low_stock_products: int
     out_of_stock_products: int
-    valuation_minor: int
+    valuation_minor: int | None
     by_category: dict[str, int]

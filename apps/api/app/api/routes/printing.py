@@ -6,6 +6,7 @@ from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentUser, DbSession
 from app.api.routes.reporting import branding_response
+from app.core.permissions import Permission, has_permission
 from app.models.customer import Customer
 from app.models.finance import CreditNote, Invoice, Payment, Quotation, Refund
 from app.models.tenant import Tenant
@@ -30,6 +31,11 @@ def brand(db: DbSession, tenant_id: UUID):
 
 @router.get("/{document_type}/{document_id}", response_model=PrintDocument)
 def print_document(document_type: str, document_id: UUID, user: CurrentUser, db: DbSession):
+    financial_types = {"invoice", "receipt", "payment-receipt", "credit-note", "refund"}
+    if document_type in financial_types and not has_permission(user, Permission.INVOICES_VIEW):
+        raise HTTPException(403, "Financial document access denied")
+    if document_type == "quotation" and not has_permission(user, Permission.QUOTATIONS_CREATE):
+        raise HTTPException(403, "Quotation access denied")
     if document_type in {"invoice", "receipt"}:
         item = db.scalar(
             select(Invoice)

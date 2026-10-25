@@ -6,17 +6,20 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import select
 
-from app.api.dependencies import CurrentUser, DbSession
+from app.api.dependencies import AuthenticatedUser, DbSession
 from app.core.config import get_settings
+from app.core.permissions import permission_names
 from app.core.security import (
     DUMMY_PASSWORD_HASH,
     create_access_token,
     decode_access_token,
+    hash_password,
     verify_password,
 )
 from app.models.tenant import Tenant
 from app.models.user import RevokedAccessToken, User
-from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, PasswordChange, TokenResponse, UserResponse
+from app.services.audit import record_audit
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -63,13 +66,15 @@ def login(credentials: LoginRequest, db: DbSession) -> TokenResponse:
 
 
 @router.get("/me", response_model=UserResponse)
-def me(user: CurrentUser) -> User:
-    return user
+def me(user: AuthenticatedUser) -> UserResponse:
+    return UserResponse.model_validate(
+        {**user.__dict__, "permissions": permission_names(user.role)}
+    )
 
 
 @router.post("/logout", status_code=204)
 def logout(
-    user: CurrentUser,
+    user: AuthenticatedUser,
     db: DbSession,
     token: Annotated[str, Depends(oauth2_scheme)],
 ) -> None:
@@ -87,3 +92,26 @@ def logout(
             )
         )
         db.commit()
+
+
+@router.post("/change-password", response_model=UserResponse)
+def change_password(data: PasswordChange, user: AuthenticatedUser, db: DbSession) -> UserResponse:
+    if not verify_password(data.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    if data.current_password == data.new_password:
+        raise HTTPException(status_code=422, detail="New password must be different")
+    user.password_hash = hash_password(data.new_password)
+    user.must_change_password = False
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    user.version += 1
+    record_audit(
+        db,
+        tenant_id=user.tenant_id,
+        actor_id=user.id,
+        action="staff.password_changed",
+        entity_type="user",
+        entity_id=user.id,
+    )
+    db.commit()
+    return me(user)

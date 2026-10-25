@@ -6,8 +6,13 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentUser, DbSession
+from app.core.permissions import (
+    CHECKOUT_ROLES,
+    PAYMENT_WRITE_ROLES,
+    Permission,
+    has_permission,
+)
 from app.models.finance import Invoice, InvoiceStatus, Payment
-from app.models.user import CHECKOUT_ROLES, PAYMENT_WRITE_ROLES
 from app.schemas.checkout import (
     CheckoutLineResult,
     CheckoutPreview,
@@ -23,6 +28,11 @@ from app.services.checkout import confirm_checkout, preview_checkout
 from app.services.payments import record_payment
 
 router = APIRouter(tags=["checkout"])
+
+
+def require_invoice_read(user) -> None:
+    if not has_permission(user, Permission.INVOICES_VIEW):
+        raise HTTPException(status_code=403, detail="Invoice access denied")
 
 
 def invoice_detail(invoice: Invoice) -> InvoiceDetail:
@@ -107,6 +117,8 @@ def get_invoice(db: DbSession, tenant_id: UUID, invoice_id: UUID) -> Invoice:
 
 @router.post("/checkout/preview", response_model=CheckoutPreview)
 def preview(data: CheckoutRequest, user: CurrentUser, db: DbSession):
+    if user.role not in CHECKOUT_ROLES:
+        raise HTTPException(status_code=403, detail="Checkout permission required")
     return preview_checkout(db, user, data)
 
 
@@ -144,6 +156,7 @@ def invoices(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
+    require_invoice_read(user)
     conditions = [Invoice.tenant_id == user.tenant_id]
     if search.strip():
         conditions.append(Invoice.invoice_number.ilike(f"%{search.strip()}%"))
@@ -191,12 +204,15 @@ def invoices(
 
 @router.get("/invoices/{invoice_id}", response_model=InvoiceDetail)
 def invoice(invoice_id: UUID, user: CurrentUser, db: DbSession):
-    return invoice_detail(get_invoice(db, user.tenant_id, invoice_id))
+    item = get_invoice(db, user.tenant_id, invoice_id)
+    require_invoice_read(user)
+    return invoice_detail(item)
 
 
 @router.get("/invoices/{invoice_id}/payments", response_model=list[PaymentResponse])
 def payments(invoice_id: UUID, user: CurrentUser, db: DbSession):
     get_invoice(db, user.tenant_id, invoice_id)
+    require_invoice_read(user)
     records = db.scalars(
         select(Payment)
         .where(Payment.invoice_id == invoice_id, Payment.tenant_id == user.tenant_id)

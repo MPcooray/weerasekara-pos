@@ -11,6 +11,7 @@ from app.api.routes import (
     orders,
     printing,
     reporting,
+    staff,
 )
 
 api_router = APIRouter()
@@ -24,3 +25,4 @@ api_router.include_router(adjustments.router)
 api_router.include_router(reporting.router)
 api_router.include_router(printing.router)
 api_router.include_router(orders.router)
+api_router.include_router(staff.router)

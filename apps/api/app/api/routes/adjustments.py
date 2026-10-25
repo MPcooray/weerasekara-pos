@@ -7,14 +7,16 @@ from sqlalchemy.orm import selectinload
 
 from app.api.dependencies import CurrentUser, DbSession
 from app.api.routes.checkout import get_invoice, invoice_detail
-from app.core.time import colombo_today
-from app.models.finance import CreditNote, Quotation, Refund, Return
-from app.models.user import (
+from app.core.permissions import (
     QUOTATION_WRITE_ROLES,
     REFUND_WRITE_ROLES,
     RETURN_APPROVE_ROLES,
     RETURN_REQUEST_ROLES,
+    Permission,
+    has_permission,
 )
+from app.core.time import colombo_today
+from app.models.finance import CreditNote, Quotation, Refund, Return
 from app.schemas.adjustments import (
     ConversionPreview,
     ConversionRequest,
@@ -42,6 +44,16 @@ from app.services.adjustments import (
 )
 
 router = APIRouter(tags=["financial-adjustments"])
+
+
+def require_quotation_access(user) -> None:
+    if not has_permission(user, Permission.QUOTATIONS_CREATE):
+        raise HTTPException(403, "Quotation access denied")
+
+
+def require_financial_access(user) -> None:
+    if not has_permission(user, Permission.INVOICES_VIEW):
+        raise HTTPException(403, "Financial record access denied")
 
 
 def quotation_response(item: Quotation) -> QuotationResponse:
@@ -127,6 +139,7 @@ def quotations(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
 ):
+    require_quotation_access(user)
     conditions = [Quotation.tenant_id == user.tenant_id]
     if search.strip():
         conditions.append(Quotation.quotation_number.ilike(f"%{search.strip()}%"))
@@ -150,6 +163,7 @@ def quotations(
 
 @router.get("/quotations/{quotation_id}", response_model=QuotationResponse)
 def quotation(quotation_id: UUID, user: CurrentUser, db: DbSession):
+    require_quotation_access(user)
     return quotation_response(get_quotation(db, user.tenant_id, quotation_id))
 
 
@@ -173,6 +187,7 @@ def issue(
 
 @router.get("/quotations/{quotation_id}/conversion-preview", response_model=ConversionPreview)
 def preview_conversion(quotation_id: UUID, user: CurrentUser, db: DbSession):
+    require_quotation_access(user)
     item = get_quotation(db, user.tenant_id, quotation_id)
     _, current, differences = conversion_preview(db, user, item)
     return ConversionPreview(
@@ -274,6 +289,7 @@ def create_return(
 
 @router.get("/invoices/{invoice_id}/returns", response_model=list[ReturnResponse])
 def invoice_returns(invoice_id: UUID, user: CurrentUser, db: DbSession):
+    require_financial_access(user)
     get_invoice(db, user.tenant_id, invoice_id)
     items = db.scalars(
         select(Return)
@@ -310,6 +326,7 @@ def approve(
 
 @router.get("/credit-notes/{credit_id}", response_model=CreditNoteResponse)
 def credit_note(credit_id: UUID, user: CurrentUser, db: DbSession):
+    require_financial_access(user)
     item = db.scalar(
         select(CreditNote)
         .where(CreditNote.id == credit_id, CreditNote.tenant_id == user.tenant_id)
@@ -356,6 +373,7 @@ def refund(
 
 @router.get("/credit-notes/{credit_id}/refunds", response_model=list[RefundResponse])
 def refunds(credit_id: UUID, user: CurrentUser, db: DbSession):
+    require_financial_access(user)
     exists = db.scalar(
         select(CreditNote.id).where(
             CreditNote.id == credit_id, CreditNote.tenant_id == user.tenant_id

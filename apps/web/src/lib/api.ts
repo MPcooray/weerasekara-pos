@@ -1,5 +1,6 @@
 export type Health = { status: string; service: string; environment: string };
-export type User = { id: string; tenant_id: string; email: string; full_name: string; role: string };
+export type User = { id: string; tenant_id: string; email: string; full_name: string; role: string; is_active:boolean; must_change_password:boolean; permissions:string[] };
+export type Staff={id:string;email:string;full_name:string;role:string;is_active:boolean;must_change_password:boolean;created_at:string;updated_at:string;version:number};
 export type Gender = "female" | "male" | "other" | "prefer_not_to_say";
 export type VisitStatus = "open" | "in_progress" | "completed" | "cancelled";
 export type CustomerInput = { full_name: string; mobile_number: string; alternative_contact_number?: string | null; date_of_birth?: string | null; gender?: Gender | null; address?: string | null; email?: string | null; notes?: string | null };
@@ -20,14 +21,14 @@ export type Examination = ExaminationInput & {
 export type ComparisonChange = { field: string; earlier: string | number | null; later: string | number | null; difference: string | number | null };
 export type ExaminationComparison = { earlier: Examination; later: Examination; changes: ComparisonChange[]; notice: string };
 export type ProductCategory = "spectacle_frame" | "sunglasses" | "prescription_lens" | "contact_lens" | "accessory" | "optical_service";
-export type Product = { id:string; name:string; sku:string; barcode:string|null; category:ProductCategory; brand:string|null; model:string|null; description:string|null; supplier_id:string|null; cost_price_minor:number; selling_price_minor:number; tax_rate:number; tax_inclusive:boolean; tax_exempt:boolean; track_stock:boolean; made_to_order:boolean; reorder_threshold:number; is_archived:boolean; quantity:number; version:number; stock_version:number; created_at:string; updated_at:string };
+export type Product = { id:string; name:string; sku:string; barcode:string|null; category:ProductCategory; brand:string|null; model:string|null; description:string|null; supplier_id:string|null; cost_price_minor:number|null; selling_price_minor:number; tax_rate:number; tax_inclusive:boolean; tax_exempt:boolean; track_stock:boolean; made_to_order:boolean; reorder_threshold:number; is_archived:boolean; quantity:number; version:number; stock_version:number; created_at:string; updated_at:string };
 export type ProductInput = Omit<Product,"id"|"is_archived"|"quantity"|"version"|"stock_version"|"created_at"|"updated_at"|"tax_exempt"|"made_to_order"> & {tax_exempt?:boolean;made_to_order?:boolean};
 export type ProductPage = { items:Product[]; page:number; page_size:number; total:number; pages:number };
 export type Supplier = { id:string; business_name:string; contact_person:string|null; telephone:string|null; email:string|null; address:string|null; notes:string|null; is_archived:boolean; created_at:string; updated_at:string };
 export type SupplierInput = Omit<Supplier,"id"|"is_archived"|"created_at"|"updated_at">;
 export type MovementType = "opening_stock"|"stock_received"|"manual_adjustment"|"damaged_stock"|"supplier_return"|"customer_return"|"sale_deduction"|"sale_reversal";
 export type StockMovement = { id:string; product_id:string; location_id:string; quantity_delta:number; movement_type:MovementType; reason:string|null; reference:string|null; actor_id:string; balance_after:number; created_at:string };
-export type InventorySummary = { active_products:number; tracked_products:number; total_units:number; low_stock_products:number; out_of_stock_products:number; valuation_minor:number; by_category:Record<string,number> };
+export type InventorySummary = { active_products:number; tracked_products:number; total_units:number; low_stock_products:number; out_of_stock_products:number; valuation_minor:number|null; by_category:Record<string,number> };
 export type CheckoutLineInput={product_id:string;quantity:number;line_discount_minor:number;expected_unit_price_minor:number};
 export type CheckoutInput={customer_id?:string|null;examination_id?:string|null;invoice_discount_minor:number;lines:CheckoutLineInput[];notes?:string|null};
 export type CheckoutLine={id?:string|null;product_id:string;product_name:string;sku:string|null;quantity:number;unit_price_minor:number;line_discount_minor:number;invoice_discount_minor:number;tax_rate_bps:number;tax_exempt:boolean;tax_inclusive:boolean;tax_minor:number;line_total_minor:number;stock_available:number|null};
@@ -153,3 +154,8 @@ export const updateOrderSupplier=(id:string,data:{supplier_id:string;supplier_re
 export const recordOrderQuality=(id:string,data:{prescription_verified:boolean;lenses_inspected:boolean;frame_inspected:boolean;fitting_confirmed:boolean;remarks?:string|null})=>request(`/orders/${id}/quality-check`,{method:"POST",body:JSON.stringify(data)});
 export const collectOrder=(id:string,version:number,allow:boolean,notes:string,key:string)=>request<OpticalOrder>(`/orders/${id}/collect`,{method:"POST",headers:{"Idempotency-Key":key},body:JSON.stringify({expected_version:version,allow_outstanding_balance:allow,notes:notes||null})});
 export const getOrderStaff=()=>request<StaffOption[]>("/orders/staff/options");
+export const getStaff=()=>request<Staff[]>("/staff");
+export const createStaff=(data:{email:string;full_name:string;role:string;temporary_password:string})=>request<Staff>("/staff",{method:"POST",body:JSON.stringify(data)});
+export const updateStaff=(id:string,data:{full_name?:string;role?:string;is_active?:boolean})=>request<Staff>(`/staff/${id}`,{method:"PATCH",body:JSON.stringify(data)});
+export const resetStaffCredentials=(id:string,temporary_password:string)=>request<Staff>(`/staff/${id}/reset-credentials`,{method:"POST",body:JSON.stringify({temporary_password})});
+export const changePassword=(current_password:string,new_password:string)=>request<User>("/auth/change-password",{method:"POST",body:JSON.stringify({current_password,new_password})});

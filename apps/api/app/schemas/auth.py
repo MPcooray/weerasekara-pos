@@ -16,11 +16,19 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 
+class PasswordChange(BaseModel):
+    current_password: str = Field(min_length=12, max_length=128)
+    new_password: str = Field(min_length=12, max_length=128)
+
+
 class UserResponse(BaseModel):
     id: UUID
     tenant_id: UUID
     email: EmailStr
     full_name: str
     role: UserRole
+    is_active: bool
+    must_change_password: bool
+    permissions: list[str] = []
 
     model_config = {"from_attributes": True}
