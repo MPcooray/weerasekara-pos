@@ -31,7 +31,7 @@ def brand(db: DbSession, tenant_id: UUID):
 
 @router.get("/{document_type}/{document_id}", response_model=PrintDocument)
 def print_document(document_type: str, document_id: UUID, user: CurrentUser, db: DbSession):
-    financial_types = {"invoice", "receipt", "payment-receipt", "credit-note", "refund"}
+    financial_types = {"invoice", "receipt", "payment", "credit-note", "refund"}
     if document_type in financial_types and not has_permission(user, Permission.INVOICES_VIEW):
         raise HTTPException(403, "Financial document access denied")
     if document_type == "quotation" and not has_permission(user, Permission.QUOTATIONS_CREATE):

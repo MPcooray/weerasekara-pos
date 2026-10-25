@@ -51,6 +51,10 @@ PYTHONPATH=apps/api ./.venv/bin/ruff check apps/api
 
 See [Phase 0 architecture](docs/architecture.md) and [security model](docs/security.md).
 
+For pre-pilot validation, use the guarded fictional dataset and checklist in
+[the Phase 8 UAT plan](docs/phase-8-uat-plan.md). The current release decision is
+documented in [Phase 8 release readiness](docs/phase-8-release-readiness.md).
+
 ## Phase 1: customer management
 
 Authenticated staff can register, search, view, and update customers, create and review visits, and receive duplicate-record warnings. Customer removal is a role-restricted soft archive. Every customer and visit query is tenant-scoped, and create/update/archive actions produce audit records.

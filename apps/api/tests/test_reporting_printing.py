@@ -188,6 +188,11 @@ def test_reporting_permissions_and_tenant_isolation(authenticated_client, client
         json={"lines": [{"product_id": item["id"], "quantity": 1}]},
         headers={"Idempotency-Key": "report-isolation-sale"},
     ).json()
+    payment = authenticated_client.post(
+        f"/api/v1/invoices/{invoice['id']}/payments",
+        json={"amount_minor": 1000, "method": "cash"},
+        headers={"Idempotency-Key": "report-isolation-payment"},
+    ).json()["payment"]
     with SessionLocal() as db:
         primary = db.query(Tenant).filter_by(slug="weerasekara-optics").one()
         cashier = User(
@@ -197,8 +202,15 @@ def test_reporting_permissions_and_tenant_isolation(authenticated_client, client
             password_hash=hash_password("SafePassword123!"),
             role=UserRole.CASHIER,
         )
+        optometrist = User(
+            tenant_id=primary.id,
+            email="report-optometrist@example.com",
+            full_name="Report Optometrist",
+            password_hash=hash_password("SafePassword123!"),
+            role=UserRole.OPTOMETRIST,
+        )
         other = Tenant(name="Other Reporter", slug="other-reporter")
-        db.add_all([cashier, other])
+        db.add_all([cashier, optometrist, other])
         db.flush()
         other_owner = User(
             tenant_id=other.id,
@@ -214,6 +226,11 @@ def test_reporting_permissions_and_tenant_isolation(authenticated_client, client
         )
         other_token = create_access_token(
             user_id=str(other_owner.id), tenant_id=str(other.id), role=other_owner.role.value
+        )
+        optometrist_token = create_access_token(
+            user_id=str(optometrist.id),
+            tenant_id=str(primary.id),
+            role=optometrist.role.value,
         )
     today = date.today().isoformat()
     assert (
@@ -243,4 +260,11 @@ def test_reporting_permissions_and_tenant_isolation(authenticated_client, client
             headers={"Authorization": f"Bearer {other_token}"},
         ).status_code
         == 404
+    )
+    assert (
+        client.get(
+            f"/api/v1/print-documents/payment/{payment['id']}",
+            headers={"Authorization": f"Bearer {optometrist_token}"},
+        ).status_code
+        == 403
     )
