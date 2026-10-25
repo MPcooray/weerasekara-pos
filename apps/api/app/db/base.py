@@ -27,6 +27,7 @@ from app.models.order import (
     OrderQualityCheck,
 )
 from app.models.product import Product
+from app.models.product_import import ProductImport
 from app.models.supplier import Supplier
 from app.models.tenant import Tenant
 from app.models.user import RevokedAccessToken, User
@@ -39,6 +40,7 @@ __all__ = [
     "InventoryBalance",
     "InventoryLocation",
     "Product",
+    "ProductImport",
     "StockMovement",
     "Supplier",
     "Tenant",
