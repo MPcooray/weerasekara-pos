@@ -18,6 +18,14 @@ from app.models.finance import (
     ReturnLine,
 )
 from app.models.inventory import InventoryBalance, InventoryLocation, StockMovement
+from app.models.order import (
+    LensSupplierOrder,
+    OpticalOrder,
+    OpticalOrderEvent,
+    OrderCollection,
+    OrderIdempotency,
+    OrderQualityCheck,
+)
 from app.models.product import Product
 from app.models.supplier import Supplier
 from app.models.tenant import Tenant
@@ -50,4 +58,10 @@ __all__ = [
     "FinancialDocumentSequence",
     "Refund",
     "RefundAllocation",
+    "OpticalOrder",
+    "OpticalOrderEvent",
+    "LensSupplierOrder",
+    "OrderQualityCheck",
+    "OrderCollection",
+    "OrderIdempotency",
 ]

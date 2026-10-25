@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.models.finance import FinancialDocumentSequence
 
-PREFIXES = {"quotation": "QTN", "return": "RTN", "credit_note": "CRN"}
+PREFIXES = {"quotation": "QTN", "return": "RTN", "credit_note": "CRN", "optical_order": "ORD"}
 
 
 def next_document_number(db: Session, tenant_id: UUID, document_type: str, year: int) -> str:

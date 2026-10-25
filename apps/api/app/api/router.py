@@ -8,6 +8,7 @@ from app.api.routes import (
     examinations,
     health,
     inventory,
+    orders,
     printing,
     reporting,
 )
@@ -22,3 +23,4 @@ api_router.include_router(checkout.router)
 api_router.include_router(adjustments.router)
 api_router.include_router(reporting.router)
 api_router.include_router(printing.router)
+api_router.include_router(orders.router)

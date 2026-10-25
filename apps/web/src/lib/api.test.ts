@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { compareExaminations, confirmCheckout, createCustomer, createQuotation, getInvoices, login, previewCheckout, recordPayment, recordRefund } from "./api";
+import { compareExaminations, confirmCheckout, createCustomer, createOrder, createQuotation, getInvoices, login, previewCheckout, recordPayment, recordRefund, transitionOrder } from "./api";
 
 const storage = new Map<string, string>();
 
@@ -107,5 +107,17 @@ describe("authenticated customer API", () => {
     await recordRefund("credit-1", { amount_minor: 5000, method: "cash", reason: "Approved return" }, "refund-key-1");
     expect(fetchMock.mock.calls[0][0]).toContain("/quotations");
     expect(new Headers(fetchMock.mock.calls[1][1].headers).get("Idempotency-Key")).toBe("refund-key-1");
+  });
+
+  it("creates and transitions optical orders with persistent idempotency keys", async () => {
+    storage.set("tetrova_access_token", "token");
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "order-1" }), { status: 201 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ id: "order-1", status: "confirmed" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await createOrder({ customer_id: "customer-1", examination_id: "exam-1", lens_type: "Progressive", coatings: [] }, "order-create-key");
+    await transitionOrder("order-1", "confirmed", 1, "Approved", "order-transition-key");
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).get("Idempotency-Key")).toBe("order-create-key");
+    expect(new Headers(fetchMock.mock.calls[1][1].headers).get("Idempotency-Key")).toBe("order-transition-key");
   });
 });

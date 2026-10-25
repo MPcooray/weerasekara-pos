@@ -80,3 +80,10 @@ Reports use finalized snapshots and immutable payment/refund events. Asia/Colomb
 converted to half-open UTC ranges. Tenant-scoped print APIs serialize the stored historical
 records, and the shared React client renders them for A4 or 80 mm browser printing.
 
+## Optical fulfilment
+
+Optical orders form a separate tenant-scoped fulfilment aggregate linked optionally to an invoice.
+Finalized prescription and frame data are snapshotted at order creation. Status events, quality
+checks, supplier tracking, and collection records preserve operational history without replaying
+checkout stock deductions or mutating financial records.
+

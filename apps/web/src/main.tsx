@@ -7,6 +7,7 @@ import "./payments.css";
 import "./adjustments.css";
 import "./printing.css";
 import "./reporting.css";
+import "./orders.css";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

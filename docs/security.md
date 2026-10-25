@@ -70,3 +70,11 @@ These items must be resolved before broad production rollout. Phase 2 adds metad
 - Logo configuration accepts a URL rather than an upload; production should restrict external
   image sources with Content Security Policy.
 
+## Optical orders
+
+- All order, supplier, quality, collection, customer, prescription, product, visit, invoice, and
+  staff references are validated against the authenticated tenant.
+- Status changes use server transition rules, persistent idempotency, row locks, and optimistic
+  versions. Collection with an outstanding balance requires an explicit owner/manager override.
+- Order cancellation never reverses inventory or financial history automatically.
+
